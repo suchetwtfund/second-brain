@@ -1,4 +1,4 @@
-# Second Brain - User Guide
+# Telos - User Guide
 
 Your personal knowledge hub for saving articles, videos, tweets, and notes.
 

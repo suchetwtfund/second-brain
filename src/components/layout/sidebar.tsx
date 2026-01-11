@@ -40,10 +40,10 @@ export function Sidebar({ folders, tags, onSignOut, onCreateFolder, onCreateTag,
     <aside className="flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar">
       {/* Logo */}
       <div className="flex h-14 items-center gap-2 px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-          <span className="text-sm font-bold text-primary-foreground">SB</span>
+        <div className="flex h-8 w-8 items-center justify-center">
+          <img src="/telos-logo.png" alt="Telos" className="h-8 w-8 object-contain" />
         </div>
-        <span className="text-lg font-semibold">Second Brain</span>
+        <span className="text-lg font-semibold">Telos</span>
       </div>
 
       <Separator className="bg-sidebar-border" />

@@ -1,4 +1,5 @@
-# How Second Brain Is Built
+
+# How Telos Is Built
 
 A simple explanation of the app's architecture for non-technical readers.
 
@@ -205,7 +206,7 @@ When filtering:
 ## File Structure Overview
 
 ```
-second-brain/
+telos/
 │
 ├── src/
 │   ├── app/                    # Pages and API routes
@@ -325,7 +326,7 @@ Supabase uses "Row Level Security" (RLS):
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                     SECOND BRAIN APP                         │
+│                        TELOS APP                              │
 ├──────────────────────────────────────────────────────────────┤
 │                                                              │
 │  FRONTEND (React + Next.js)                                  │

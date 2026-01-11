@@ -65,10 +65,10 @@ export default function LoginPage() {
 
       <Card className="relative w-full max-w-md border-border/50 bg-card/80 backdrop-blur-sm">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary glow">
-            <span className="text-lg font-bold text-primary-foreground">SB</span>
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center">
+            <img src="/telos-logo.png" alt="Telos" className="h-14 w-14 object-contain" />
           </div>
-          <CardTitle className="text-2xl">Second Brain</CardTitle>
+          <CardTitle className="text-2xl">Telos</CardTitle>
           <CardDescription>
             {isSignUp
               ? 'Create an account to start saving your knowledge'
