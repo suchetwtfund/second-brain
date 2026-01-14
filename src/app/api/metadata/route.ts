@@ -4,11 +4,11 @@ interface Metadata {
   title: string
   description: string | null
   thumbnail: string | null
-  contentType: 'video' | 'article' | 'substack' | 'tweet' | 'link'
+  contentType: 'video' | 'article' | 'substack' | 'tweet' | 'link' | 'spotify'
 }
 
 // Detect content type from URL only (fallback when HTML not available)
-function detectContentType(url: string): 'video' | 'article' | 'substack' | 'tweet' | 'link' {
+function detectContentType(url: string): 'video' | 'article' | 'substack' | 'tweet' | 'link' | 'spotify' {
   const hostname = new URL(url).hostname.toLowerCase()
 
   // Video platforms
@@ -36,6 +36,18 @@ function detectContentType(url: string): 'video' | 'article' | 'substack' | 'twe
     return 'tweet'
   }
 
+  // Spotify podcasts (episodes and shows only)
+  if (hostname.includes('open.spotify.com')) {
+    try {
+      const pathname = new URL(url).pathname
+      if (pathname.startsWith('/episode/') || pathname.startsWith('/show/')) {
+        return 'spotify'
+      }
+    } catch {
+      // Fall through to default
+    }
+  }
+
   // Article platforms
   if (
     hostname.includes('medium.com') ||
@@ -56,7 +68,7 @@ function detectContentType(url: string): 'video' | 'article' | 'substack' | 'twe
 function detectContentTypeFromHtml(
   html: string,
   url: string
-): 'video' | 'article' | 'substack' | 'tweet' | 'link' {
+): 'video' | 'article' | 'substack' | 'tweet' | 'link' | 'spotify' {
   const hostname = new URL(url).hostname.toLowerCase()
   const pathname = new URL(url).pathname.toLowerCase()
 
@@ -83,6 +95,13 @@ function detectContentTypeFromHtml(
     hostname.includes('threads.net')
   ) {
     return 'tweet'
+  }
+
+  // 3.5. Spotify podcasts (episodes and shows only)
+  if (hostname.includes('open.spotify.com')) {
+    if (pathname.startsWith('/episode/') || pathname.startsWith('/show/')) {
+      return 'spotify'
+    }
   }
 
   // 4. Check og:type meta tag
@@ -146,6 +165,14 @@ export async function GET(request: NextRequest) {
     // Special handling for YouTube
     if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
       return await handleYouTubeUrl(url)
+    }
+
+    // Special handling for Spotify podcasts
+    if (hostname.includes('open.spotify.com')) {
+      const pathname = parsedUrl.pathname
+      if (pathname.startsWith('/episode/') || pathname.startsWith('/show/')) {
+        return await handleSpotifyUrl(url)
+      }
     }
 
     // Fetch the page with a browser-like user agent
@@ -451,5 +478,56 @@ async function handleYouTubeUrl(url: string): Promise<NextResponse> {
     description: null,
     thumbnail: null,
     contentType: 'video',
+  })
+}
+
+// Handle Spotify podcast URLs (episodes and shows)
+async function handleSpotifyUrl(url: string): Promise<NextResponse> {
+  try {
+    // Use Spotify's oEmbed API (similar pattern to YouTube)
+    const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(url)}`
+    const response = await fetch(oembedUrl)
+
+    if (response.ok) {
+      const data = await response.json()
+      return NextResponse.json({
+        title: data.title || 'Spotify Podcast',
+        description: data.provider_name ? `on ${data.provider_name}` : null,
+        thumbnail: data.thumbnail_url || null,
+        contentType: 'spotify',
+      })
+    }
+  } catch (e) {
+    console.error('Spotify oEmbed fetch error:', e)
+  }
+
+  // Fallback: try fetching og:image from the page directly
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+    })
+
+    if (response.ok) {
+      const html = await response.text()
+      return NextResponse.json({
+        title: extractMetaContent(html, 'og:title') || 'Spotify Podcast',
+        description: extractMetaContent(html, 'og:description'),
+        thumbnail: extractMetaContent(html, 'og:image'),
+        contentType: 'spotify',
+      })
+    }
+  } catch (e) {
+    console.error('Spotify page fetch error:', e)
+  }
+
+  // Final fallback
+  return NextResponse.json({
+    title: 'Spotify Podcast',
+    description: null,
+    thumbnail: null,
+    contentType: 'spotify',
   })
 }

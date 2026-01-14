@@ -24,6 +24,8 @@ import {
   Trash2,
   FolderOpen,
   Tag,
+  FileIcon,
+  Headphones,
 } from 'lucide-react'
 import type { Item, Tag as TagType } from '@/lib/supabase/types'
 
@@ -44,6 +46,8 @@ const contentTypeIcons = {
   tweet: FileText,
   link: LinkIcon,
   note: StickyNote,
+  pdf: FileIcon,
+  spotify: Headphones,
 }
 
 const contentTypeColors = {
@@ -52,6 +56,8 @@ const contentTypeColors = {
   tweet: 'bg-blue-500/20 text-blue-400',
   link: 'bg-purple-500/20 text-purple-400',
   note: 'bg-yellow-500/20 text-yellow-400',
+  pdf: 'bg-orange-500/20 text-orange-400',
+  spotify: 'bg-[#1DB954]/20 text-[#1DB954]',
 }
 
 export function ItemCard({
@@ -189,8 +195,10 @@ export function ItemCard({
     <div
       className={cn(
         'group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5',
-        item.status === 'unread' && 'ring-1 ring-primary/50'
+        item.status === 'unread' && 'ring-1 ring-primary/50',
+        item.url && 'cursor-pointer'
       )}
+      onClick={item.url ? handleOpen : undefined}
     >
       {/* Thumbnail */}
       <div className="relative aspect-video w-full overflow-hidden bg-secondary">
@@ -218,41 +226,84 @@ export function ItemCard({
           {item.content_type}
         </Badge>
 
-        {/* Actions overlay */}
-        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-background/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+        {/* Mobile: Always visible action button */}
+        <div className="absolute right-2 top-2 md:hidden">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="secondary" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {item.url && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleOpen(); }}>
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Open link
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkRead(item.id); }}>
+                <Check className="mr-2 h-4 w-4" />
+                Mark as {item.status === 'read' ? 'unread' : 'read'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMoveToFolder(item.id); }}>
+                <FolderOpen className="mr-2 h-4 w-4" />
+                Move to folder
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAddTag(item.id); }}>
+                <Tag className="mr-2 h-4 w-4" />
+                Add tag
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(item.id); }}>
+                <Archive className="mr-2 h-4 w-4" />
+                Archive
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Desktop: Hover overlay */}
+        <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-background/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 md:flex">
           {item.url && (
-            <Button size="sm" className="gap-1" onClick={handleOpen}>
+            <Button size="sm" className="gap-1" onClick={(e) => { e.stopPropagation(); handleOpen(); }}>
               <ExternalLink className="h-4 w-4" />
               Open
             </Button>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="secondary">
+              <Button size="sm" variant="secondary" onClick={(e) => e.stopPropagation()}>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="center">
-              <DropdownMenuItem onClick={() => onMarkRead(item.id)}>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkRead(item.id); }}>
                 <Check className="mr-2 h-4 w-4" />
                 Mark as {item.status === 'read' ? 'unread' : 'read'}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onMoveToFolder(item.id)}>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMoveToFolder(item.id); }}>
                 <FolderOpen className="mr-2 h-4 w-4" />
                 Move to folder
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onAddTag(item.id)}>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAddTag(item.id); }}>
                 <Tag className="mr-2 h-4 w-4" />
                 Add tag
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onArchive(item.id)}>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(item.id); }}>
                 <Archive className="mr-2 h-4 w-4" />
                 Archive
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive"
-                onClick={() => onDelete(item.id)}
+                onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete

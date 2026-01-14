@@ -13,7 +13,7 @@ import {
 import { Search, Command, LayoutGrid, List, SlidersHorizontal, Menu, Check, Square } from 'lucide-react'
 
 export type FilterStatus = 'all' | 'unread' | 'read'
-export type FilterType = 'video' | 'article' | 'substack' | 'tweet' | 'link' | 'note'
+export type FilterType = 'video' | 'article' | 'substack' | 'tweet' | 'link' | 'note' | 'spotify'
 
 interface HeaderProps {
   title: string
@@ -196,6 +196,10 @@ export function Header({
             <DropdownMenuItem onClick={() => toggleType('note')} className="flex justify-between">
               Notes
               {filterTypes.includes('note') ? <Check className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4 text-muted-foreground" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toggleType('spotify')} className="flex justify-between">
+              Spotify
+              {filterTypes.includes('spotify') ? <Check className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4 text-muted-foreground" />}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

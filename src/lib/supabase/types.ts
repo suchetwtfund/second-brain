@@ -39,7 +39,7 @@ export type Database = {
         Row: {
           id: string
           user_id: string
-          type: 'link' | 'note'
+          type: 'link' | 'note' | 'pdf'
           url: string | null
           title: string
           description: string | null
@@ -47,14 +47,14 @@ export type Database = {
           content: string | null
           folder_id: string | null
           status: 'unread' | 'read' | 'archived'
-          content_type: 'video' | 'article' | 'tweet' | 'link' | 'note'
+          content_type: 'video' | 'article' | 'tweet' | 'link' | 'note' | 'pdf' | 'spotify'
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           user_id: string
-          type: 'link' | 'note'
+          type: 'link' | 'note' | 'pdf'
           url?: string | null
           title: string
           description?: string | null
@@ -62,14 +62,14 @@ export type Database = {
           content?: string | null
           folder_id?: string | null
           status?: 'unread' | 'read' | 'archived'
-          content_type?: 'video' | 'article' | 'tweet' | 'link' | 'note'
+          content_type?: 'video' | 'article' | 'tweet' | 'link' | 'note' | 'pdf'
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           user_id?: string
-          type?: 'link' | 'note'
+          type?: 'link' | 'note' | 'pdf'
           url?: string | null
           title?: string
           description?: string | null
@@ -77,7 +77,7 @@ export type Database = {
           content?: string | null
           folder_id?: string | null
           status?: 'unread' | 'read' | 'archived'
-          content_type?: 'video' | 'article' | 'tweet' | 'link' | 'note'
+          content_type?: 'video' | 'article' | 'tweet' | 'link' | 'note' | 'pdf'
           created_at?: string
           updated_at?: string
         }
