@@ -18,7 +18,7 @@ create table public.folders (
 create table public.items (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references auth.users(id) on delete cascade not null,
-  type text check (type in ('link', 'note')) not null default 'link',
+  type text check (type in ('link', 'note', 'pdf')) not null default 'link',
   url text,
   title text not null,
   description text,
@@ -26,7 +26,7 @@ create table public.items (
   content text,
   folder_id uuid references public.folders(id) on delete set null,
   status text check (status in ('unread', 'read', 'archived')) not null default 'unread',
-  content_type text check (content_type in ('video', 'article', 'tweet', 'link', 'note')) not null default 'link',
+  content_type text check (content_type in ('video', 'article', 'tweet', 'link', 'note', 'pdf', 'spotify', 'substack')) not null default 'link',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
