@@ -14,6 +14,9 @@ import { Plus, Inbox } from 'lucide-react'
 import { toast } from 'sonner'
 import { CreateFolderDialog } from '@/components/dialogs/create-folder-dialog'
 import { CreateTagDialog } from '@/components/dialogs/create-tag-dialog'
+import { SettingsDialog } from '@/components/dialogs/settings-dialog'
+import { MoveToFolderDialog } from '@/components/dialogs/move-to-folder-dialog'
+import { AddTagsDialog } from '@/components/dialogs/add-tags-dialog'
 import type { Item, Folder, Tag } from '@/lib/supabase/types'
 
 interface DashboardProps {
@@ -38,6 +41,11 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, c
   const [createTagOpen, setCreateTagOpen] = useState(false)
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [filterTypes, setFilterTypes] = useState<FilterType[]>([])
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [moveToFolderOpen, setMoveToFolderOpen] = useState(false)
+  const [addTagsOpen, setAddTagsOpen] = useState(false)
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+  const [itemTagsMap, setItemTagsMap] = useState<Record<string, string[]>>({})
 
   const router = useRouter()
   const supabase = createClient()
@@ -59,22 +67,52 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, c
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // Real-time subscription for instant item updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('items-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'items',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const newItem = payload.new as Item
+          // Only add if not already in the list (prevents duplicates from local adds)
+          setItems((prev) => {
+            if (prev.some((item) => item.id === newItem.id)) {
+              return prev
+            }
+            return [newItem, ...prev]
+          })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userId, supabase])
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
   }
 
-  const handleAddItem = async (data: { url?: string; title: string; content?: string; type: 'link' | 'note' }) => {
+  const handleAddItem = async (data: { url?: string; title: string; content?: string; type: 'link' | 'note' | 'pdf' }) => {
     let metadata: { title: string; description: string | null; thumbnail: string | null; contentType: string } = {
       title: data.title,
       description: null,
       thumbnail: null,
-      contentType: data.type === 'note' ? 'note' : 'link',
+      contentType: data.type === 'note' ? 'note' : data.type === 'pdf' ? 'pdf' : 'link',
     }
 
-    // Fetch metadata for links
-    if (data.url) {
+    // Fetch metadata for links (not for PDFs or notes)
+    if (data.url && data.type === 'link') {
       try {
         const response = await fetch(`/api/metadata?url=${encodeURIComponent(data.url)}`)
         if (response.ok) {
@@ -244,6 +282,77 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, c
     }
   }
 
+  const handleMoveToFolder = async (itemId: string) => {
+    setSelectedItemId(itemId)
+    setMoveToFolderOpen(true)
+  }
+
+  const handleConfirmMoveFolder = async (folderId: string | null) => {
+    if (!selectedItemId) return
+
+    const { error } = await supabase
+      .from('items')
+      .update({ folder_id: folderId })
+      .eq('id', selectedItemId)
+
+    if (error) {
+      toast.error('Failed to move item')
+      return
+    }
+
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === selectedItemId ? { ...item, folder_id: folderId } : item
+      )
+    )
+    const folderName = folderId ? folders.find((f) => f.id === folderId)?.name : 'No folder'
+    toast.success(`Moved to ${folderName}`)
+  }
+
+  const handleAddTag = async (itemId: string) => {
+    setSelectedItemId(itemId)
+    // Fetch current tags for this item
+    const { data: itemTags } = await supabase
+      .from('item_tags')
+      .select('tag_id')
+      .eq('item_id', itemId)
+
+    const tagIds = itemTags?.map((it) => it.tag_id) || []
+    setItemTagsMap((prev) => ({ ...prev, [itemId]: tagIds }))
+    setAddTagsOpen(true)
+  }
+
+  const handleConfirmAddTags = async (tagIds: string[]) => {
+    if (!selectedItemId) return
+
+    // Get current tags
+    const currentTagIds = itemTagsMap[selectedItemId] || []
+
+    // Find tags to add and remove
+    const toAdd = tagIds.filter((id) => !currentTagIds.includes(id))
+    const toRemove = currentTagIds.filter((id) => !tagIds.includes(id))
+
+    // Remove tags
+    if (toRemove.length > 0) {
+      await supabase
+        .from('item_tags')
+        .delete()
+        .eq('item_id', selectedItemId)
+        .in('tag_id', toRemove)
+    }
+
+    // Add new tags
+    if (toAdd.length > 0) {
+      await supabase
+        .from('item_tags')
+        .insert(toAdd.map((tagId) => ({ item_id: selectedItemId, tag_id: tagId })))
+    }
+
+    // Update local cache
+    setItemTagsMap((prev) => ({ ...prev, [selectedItemId]: tagIds }))
+    toast.success('Tags updated')
+  }
+
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query)
     // In a real app, you'd filter items or make an API call
@@ -283,6 +392,7 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, c
           onCreateFolder={() => setCreateFolderOpen(true)}
           onCreateTag={() => setCreateTagOpen(true)}
           onAddItem={() => setAddDialogOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
       </div>
 
@@ -296,6 +406,7 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, c
             onCreateFolder={() => setCreateFolderOpen(true)}
             onCreateTag={() => setCreateTagOpen(true)}
             onAddItem={() => setAddDialogOpen(true)}
+            onOpenSettings={() => setSettingsOpen(true)}
           />
         </SheetContent>
       </Sheet>
@@ -344,8 +455,8 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, c
                   onMarkRead={handleMarkRead}
                   onArchive={handleArchive}
                   onDelete={handleDelete}
-                  onMoveToFolder={() => {}}
-                  onAddTag={() => {}}
+                  onMoveToFolder={handleMoveToFolder}
+                  onAddTag={handleAddTag}
                 />
               ))}
             </div>
@@ -359,8 +470,8 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, c
                   onMarkRead={handleMarkRead}
                   onArchive={handleArchive}
                   onDelete={handleDelete}
-                  onMoveToFolder={() => {}}
-                  onAddTag={() => {}}
+                  onMoveToFolder={handleMoveToFolder}
+                  onAddTag={handleAddTag}
                 />
               ))}
             </div>
@@ -402,6 +513,27 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, c
         open={createTagOpen}
         onOpenChange={setCreateTagOpen}
         onCreateTag={handleCreateTag}
+      />
+
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+      />
+
+      <MoveToFolderDialog
+        open={moveToFolderOpen}
+        onOpenChange={setMoveToFolderOpen}
+        folders={folders}
+        currentFolderId={selectedItemId ? items.find((i) => i.id === selectedItemId)?.folder_id || null : null}
+        onMove={handleConfirmMoveFolder}
+      />
+
+      <AddTagsDialog
+        open={addTagsOpen}
+        onOpenChange={setAddTagsOpen}
+        tags={tags}
+        currentTagIds={selectedItemId ? itemTagsMap[selectedItemId] || [] : []}
+        onSave={handleConfirmAddTags}
       />
     </div>
   )

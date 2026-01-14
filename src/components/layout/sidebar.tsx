@@ -25,13 +25,14 @@ interface SidebarProps {
   onCreateFolder: () => void
   onCreateTag: () => void
   onAddItem: () => void
+  onOpenSettings: () => void
 }
 
 const navItems = [
   { href: '/', label: 'All Items', icon: Home },
 ]
 
-export function Sidebar({ folders, tags, onSignOut, onCreateFolder, onCreateTag, onAddItem }: SidebarProps) {
+export function Sidebar({ folders, tags, onSignOut, onCreateFolder, onCreateTag, onAddItem, onOpenSettings }: SidebarProps) {
   const pathname = usePathname()
   const [foldersExpanded, setFoldersExpanded] = useState(true)
   const [tagsExpanded, setTagsExpanded] = useState(true)
@@ -189,6 +190,7 @@ export function Sidebar({ folders, tags, onSignOut, onCreateFolder, onCreateTag,
             variant="ghost"
             size="sm"
             className="flex-1 justify-start gap-2 text-muted-foreground hover:text-foreground"
+            onClick={onOpenSettings}
           >
             <Settings className="h-4 w-4" />
             Settings

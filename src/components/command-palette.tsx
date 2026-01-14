@@ -24,6 +24,7 @@ import {
   FileText,
   Link as LinkIcon,
   StickyNote,
+  FileIcon,
 } from 'lucide-react'
 import type { Item, Folder, Tag as TagType } from '@/lib/supabase/types'
 
@@ -42,6 +43,7 @@ const contentTypeIcons = {
   tweet: FileText,
   link: LinkIcon,
   note: StickyNote,
+  pdf: FileIcon,
 }
 
 export function CommandPalette({
