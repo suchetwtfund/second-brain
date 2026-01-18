@@ -103,7 +103,7 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, c
     router.refresh()
   }
 
-  const handleAddItem = async (data: { url?: string; title: string; content?: string; type: 'link' | 'note' | 'pdf' }) => {
+  const handleAddItem = async (data: { url?: string; title: string; content?: string; description?: string; type: 'link' | 'note' | 'pdf' }) => {
     let metadata: { title: string; description: string | null; thumbnail: string | null; contentType: string } = {
       title: data.title,
       description: null,
@@ -123,6 +123,9 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, c
       }
     }
 
+    // Use user-provided description if available, otherwise fall back to metadata
+    const finalDescription = data.description || metadata.description
+
     const { data: newItem, error } = await supabase
       .from('items')
       .insert({
@@ -130,7 +133,7 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, c
         type: data.type,
         url: data.url || null,
         title: data.title || metadata.title,
-        description: metadata.description,
+        description: finalDescription,
         thumbnail: metadata.thumbnail,
         content: data.content || null,
         content_type: metadata.contentType,
@@ -363,7 +366,8 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, c
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       if (!item.title.toLowerCase().includes(query) &&
-          !item.description?.toLowerCase().includes(query)) {
+          !item.description?.toLowerCase().includes(query) &&
+          !item.content?.toLowerCase().includes(query)) {
         return false
       }
     }

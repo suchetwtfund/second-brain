@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -10,10 +10,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Search, Command, LayoutGrid, List, SlidersHorizontal, Menu, Check, Square } from 'lucide-react'
+import { Search, Command, LayoutGrid, List, SlidersHorizontal, Menu, Check, Square, X } from 'lucide-react'
 
 export type FilterStatus = 'all' | 'unread' | 'read'
-export type FilterType = 'video' | 'article' | 'substack' | 'tweet' | 'link' | 'note' | 'spotify'
+export type FilterType = 'video' | 'article' | 'substack' | 'tweet' | 'link' | 'note' | 'pdf' | 'spotify'
 
 interface HeaderProps {
   title: string
@@ -43,6 +43,14 @@ export function Header({
   onFilterTypesChange,
 }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState('')
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const mobileSearchRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (mobileSearchOpen && mobileSearchRef.current) {
+      mobileSearchRef.current.focus()
+    }
+  }, [mobileSearchOpen])
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value)
@@ -66,8 +74,35 @@ export function Header({
     onFilterTypesChange([])
   }
 
+  const closeMobileSearch = () => {
+    setMobileSearchOpen(false)
+    setSearchQuery('')
+    onSearch('')
+  }
+
   return (
-    <header className="flex h-14 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-sm">
+    <header className="relative flex h-14 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-sm">
+      {/* Mobile search overlay */}
+      {mobileSearchOpen && (
+        <div className="absolute inset-0 z-50 flex items-center gap-2 bg-background px-4 sm:hidden">
+          <Search className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+          <Input
+            ref={mobileSearchRef}
+            placeholder="Search items..."
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="flex-1 bg-transparent border-none focus-visible:ring-0 px-0"
+            autoFocus
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={closeMobileSearch}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
       <div className="flex items-center gap-4">
         {/* Mobile menu toggle */}
         <Button
@@ -112,7 +147,7 @@ export function Header({
           variant="ghost"
           size="icon"
           className="sm:hidden"
-          onClick={onOpenCommandPalette}
+          onClick={() => setMobileSearchOpen(true)}
         >
           <Search className="h-5 w-5" />
         </Button>
@@ -196,6 +231,10 @@ export function Header({
             <DropdownMenuItem onClick={() => toggleType('note')} className="flex justify-between">
               Notes
               {filterTypes.includes('note') ? <Check className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4 text-muted-foreground" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toggleType('pdf')} className="flex justify-between">
+              PDFs
+              {filterTypes.includes('pdf') ? <Check className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4 text-muted-foreground" />}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => toggleType('spotify')} className="flex justify-between">
               Spotify

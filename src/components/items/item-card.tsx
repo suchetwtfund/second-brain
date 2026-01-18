@@ -40,7 +40,7 @@ interface ItemCardProps {
   onAddTag: (id: string) => void
 }
 
-const contentTypeIcons = {
+const contentTypeIcons: Record<string, typeof Video> = {
   video: Video,
   article: FileText,
   tweet: FileText,
@@ -48,9 +48,10 @@ const contentTypeIcons = {
   note: StickyNote,
   pdf: FileIcon,
   spotify: Headphones,
+  substack: FileText,
 }
 
-const contentTypeColors = {
+const contentTypeColors: Record<string, string> = {
   video: 'bg-red-500/20 text-red-400',
   article: 'bg-green-500/20 text-green-400',
   tweet: 'bg-blue-500/20 text-blue-400',
@@ -58,6 +59,7 @@ const contentTypeColors = {
   note: 'bg-yellow-500/20 text-yellow-400',
   pdf: 'bg-orange-500/20 text-orange-400',
   spotify: 'bg-[#1DB954]/20 text-[#1DB954]',
+  substack: 'bg-orange-600/20 text-orange-500',
 }
 
 export function ItemCard({
@@ -71,7 +73,7 @@ export function ItemCard({
   onAddTag,
 }: ItemCardProps) {
   const [imageError, setImageError] = useState(false)
-  const Icon = contentTypeIcons[item.content_type]
+  const Icon = contentTypeIcons[item.content_type] || LinkIcon
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -119,9 +121,9 @@ export function ItemCard({
               {item.content_type}
             </Badge>
           </div>
-          {item.description && (
+          {(item.description || item.content) && (
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {item.description}
+              {item.description || item.content}
             </p>
           )}
         </div>
@@ -316,9 +318,9 @@ export function ItemCard({
       {/* Content */}
       <div className="flex flex-1 flex-col p-3">
         <h3 className="line-clamp-2 text-sm font-medium">{item.title}</h3>
-        {item.description && (
+        {(item.description || item.content) && (
           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-            {item.description}
+            {item.description || item.content}
           </p>
         )}
 

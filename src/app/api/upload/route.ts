@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: 'File size exceeds 10MB limit' }, { status: 400 })
+      return NextResponse.json({ error: 'File size exceeds 20MB limit' }, { status: 413 })
     }
 
     // Generate unique filename

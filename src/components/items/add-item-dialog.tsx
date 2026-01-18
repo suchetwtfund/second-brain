@@ -17,13 +17,14 @@ import { createClient } from '@/lib/supabase/client'
 interface AddItemDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAddItem: (data: { url?: string; title: string; content?: string; type: 'link' | 'note' | 'pdf' }) => Promise<void>
+  onAddItem: (data: { url?: string; title: string; content?: string; description?: string; type: 'link' | 'note' | 'pdf' }) => Promise<void>
 }
 
 export function AddItemDialog({ open, onOpenChange, onAddItem }: AddItemDialogProps) {
   const [mode, setMode] = useState<'link' | 'note' | 'pdf'>('link')
   const [url, setUrl] = useState('')
   const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [fetchingMetadata, setFetchingMetadata] = useState(false)
@@ -43,9 +44,10 @@ export function AddItemDialog({ open, onOpenChange, onAddItem }: AddItemDialogPr
         if (response.ok) {
           const data = await response.json()
           if (data.title) setTitle(data.title)
+          if (data.description) setDescription(data.description)
         }
       } catch {
-        // Ignore errors - user can still manually enter title
+        // Ignore errors - user can still manually enter title/description
       }
       setFetchingMetadata(false)
     }
@@ -145,6 +147,7 @@ export function AddItemDialog({ open, onOpenChange, onAddItem }: AddItemDialogPr
           type: mode,
           url: mode === 'link' ? url : undefined,
           title: title || url,
+          description: mode === 'link' ? description : undefined,
           content: mode === 'note' ? content : undefined,
         })
       }
@@ -161,6 +164,7 @@ export function AddItemDialog({ open, onOpenChange, onAddItem }: AddItemDialogPr
   const resetForm = () => {
     setUrl('')
     setTitle('')
+    setDescription('')
     setContent('')
     setSelectedFile(null)
     setMode('link')
@@ -234,6 +238,18 @@ export function AddItemDialog({ open, onOpenChange, onAddItem }: AddItemDialogPr
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Notes (optional)</label>
+                <textarea
+                  placeholder="Add your own notes or description..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Auto-filled from page. Edit to add your own context.
+                </p>
               </div>
             </>
           )}
