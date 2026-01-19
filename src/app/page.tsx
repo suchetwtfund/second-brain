@@ -33,6 +33,7 @@ export default async function Home() {
       initialFolders={folders || []}
       initialTags={tags || []}
       userId={user.id}
+      userEmail={user.email || ''}
     />
   )
 }

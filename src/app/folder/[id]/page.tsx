@@ -50,6 +50,7 @@ export default async function FolderPage({ params }: FolderPageProps) {
       initialFolders={folders || []}
       initialTags={tags || []}
       userId={user.id}
+      userEmail={user.email || ''}
       currentFolder={folder}
     />
   )

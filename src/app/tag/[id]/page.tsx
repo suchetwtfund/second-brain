@@ -64,6 +64,7 @@ export default async function TagPage({ params }: TagPageProps) {
       initialFolders={folders || []}
       initialTags={tags || []}
       userId={user.id}
+      userEmail={user.email || ''}
       currentTag={tag}
     />
   )

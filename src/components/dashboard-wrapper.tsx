@@ -23,6 +23,7 @@ interface DashboardWrapperProps {
   initialFolders: Folder[]
   initialTags: Tag[]
   userId: string
+  userEmail?: string
   currentFolder?: Folder
   currentTag?: Tag
 }

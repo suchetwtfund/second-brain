@@ -21,6 +21,7 @@ import type { Folder, Tag as TagType } from '@/lib/supabase/types'
 interface SidebarProps {
   folders: Folder[]
   tags: TagType[]
+  userEmail?: string
   onSignOut: () => void
   onCreateFolder: () => void
   onCreateTag: () => void
@@ -32,7 +33,7 @@ const navItems = [
   { href: '/', label: 'All Items', icon: Home },
 ]
 
-export function Sidebar({ folders, tags, onSignOut, onCreateFolder, onCreateTag, onAddItem, onOpenSettings }: SidebarProps) {
+export function Sidebar({ folders, tags, userEmail, onSignOut, onCreateFolder, onCreateTag, onAddItem, onOpenSettings }: SidebarProps) {
   const pathname = usePathname()
   const [foldersExpanded, setFoldersExpanded] = useState(true)
   const [tagsExpanded, setTagsExpanded] = useState(true)
@@ -184,7 +185,14 @@ export function Sidebar({ folders, tags, onSignOut, onCreateFolder, onCreateTag,
       <Separator className="bg-sidebar-border" />
 
       {/* Footer */}
-      <div className="p-3">
+      <div className="p-3 space-y-2">
+        {userEmail && (
+          <div className="px-2 py-1">
+            <p className="text-xs text-muted-foreground truncate" title={userEmail}>
+              {userEmail}
+            </p>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"

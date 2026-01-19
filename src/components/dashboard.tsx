@@ -24,11 +24,12 @@ interface DashboardProps {
   initialFolders: Folder[]
   initialTags: Tag[]
   userId: string
+  userEmail?: string
   currentFolder?: Folder
   currentTag?: Tag
 }
 
-export function Dashboard({ initialItems, initialFolders, initialTags, userId, currentFolder, currentTag }: DashboardProps) {
+export function Dashboard({ initialItems, initialFolders, initialTags, userId, userEmail, currentFolder, currentTag }: DashboardProps) {
   const [items, setItems] = useState<Item[]>(initialItems)
   const [folders, setFolders] = useState<Folder[]>(initialFolders)
   const [tags, setTags] = useState<Tag[]>(initialTags)
@@ -392,6 +393,7 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, c
         <Sidebar
           folders={folders}
           tags={tags}
+          userEmail={userEmail}
           onSignOut={handleSignOut}
           onCreateFolder={() => setCreateFolderOpen(true)}
           onCreateTag={() => setCreateTagOpen(true)}
@@ -406,6 +408,7 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, c
           <Sidebar
             folders={folders}
             tags={tags}
+            userEmail={userEmail}
             onSignOut={handleSignOut}
             onCreateFolder={() => setCreateFolderOpen(true)}
             onCreateTag={() => setCreateTagOpen(true)}

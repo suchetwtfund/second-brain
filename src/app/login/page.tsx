@@ -6,12 +6,14 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, Mail, ArrowRight } from 'lucide-react'
+import { Loader2, Mail, ArrowRight, ArrowLeft } from 'lucide-react'
+
+type ViewMode = 'signin' | 'signup' | 'forgot-password'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isSignUp, setIsSignUp] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('signin')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
   const router = useRouter()
@@ -23,7 +25,16 @@ export default function LoginPage() {
     setMessage(null)
 
     try {
-      if (isSignUp) {
+      if (viewMode === 'forgot-password') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+        })
+        if (error) throw error
+        setMessage({
+          type: 'success',
+          text: 'Check your email for a password reset link!',
+        })
+      } else if (viewMode === 'signup') {
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -70,8 +81,10 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl">Telos</CardTitle>
           <CardDescription>
-            {isSignUp
+            {viewMode === 'signup'
               ? 'Create an account to start saving your knowledge'
+              : viewMode === 'forgot-password'
+              ? 'Enter your email to reset your password'
               : 'Sign in to access your saved knowledge'}
           </CardDescription>
         </CardHeader>
@@ -92,17 +105,19 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Password</label>
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </div>
+            {viewMode !== 'forgot-password' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Password</label>
+                <Input
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
 
             {message && (
               <div
@@ -120,32 +135,62 @@ export default function LoginPage() {
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  {isSignUp ? 'Creating account...' : 'Signing in...'}
+                  {viewMode === 'signup' ? 'Creating account...' : viewMode === 'forgot-password' ? 'Sending...' : 'Signing in...'}
                 </>
               ) : (
                 <>
-                  {isSignUp ? 'Create account' : 'Sign in'}
+                  {viewMode === 'signup' ? 'Create account' : viewMode === 'forgot-password' ? 'Send reset link' : 'Sign in'}
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">
-              {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-            </span>{' '}
-            <button
-              type="button"
-              onClick={() => {
-                setIsSignUp(!isSignUp)
-                setMessage(null)
-              }}
-              className="font-medium text-primary hover:underline"
-            >
-              {isSignUp ? 'Sign in' : 'Sign up'}
-            </button>
-          </div>
+          {viewMode === 'forgot-password' ? (
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode('signin')
+                  setMessage(null)
+                }}
+                className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+              >
+                <ArrowLeft className="h-3 w-3" />
+                Back to sign in
+              </button>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-3 text-center text-sm">
+              {viewMode === 'signin' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode('forgot-password')
+                    setMessage(null)
+                  }}
+                  className="text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  Forgot password?
+                </button>
+              )}
+              <div>
+                <span className="text-muted-foreground">
+                  {viewMode === 'signup' ? 'Already have an account?' : "Don't have an account?"}
+                </span>{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode(viewMode === 'signup' ? 'signin' : 'signup')
+                    setMessage(null)
+                  }}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {viewMode === 'signup' ? 'Sign in' : 'Sign up'}
+                </button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
