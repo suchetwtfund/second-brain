@@ -17,6 +17,7 @@ import { CreateTagDialog } from '@/components/dialogs/create-tag-dialog'
 import { SettingsDialog } from '@/components/dialogs/settings-dialog'
 import { MoveToFolderDialog } from '@/components/dialogs/move-to-folder-dialog'
 import { AddTagsDialog } from '@/components/dialogs/add-tags-dialog'
+import { ItemDetailDialog } from '@/components/items/item-detail-dialog'
 import type { Item, Folder, Tag } from '@/lib/supabase/types'
 
 interface DashboardProps {
@@ -47,6 +48,8 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
   const [addTagsOpen, setAddTagsOpen] = useState(false)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [itemTagsMap, setItemTagsMap] = useState<Record<string, string[]>>({})
+  const [itemDetailOpen, setItemDetailOpen] = useState(false)
+  const [viewingItemId, setViewingItemId] = useState<string | null>(null)
 
   const router = useRouter()
   const supabase = createClient()
@@ -362,6 +365,11 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
     // In a real app, you'd filter items or make an API call
   }, [])
 
+  const handleViewDetails = (itemId: string) => {
+    setViewingItemId(itemId)
+    setItemDetailOpen(true)
+  }
+
   const filteredItems = items
     .filter((item) => {
       // Search filter
@@ -471,6 +479,7 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
                   onDelete={handleDelete}
                   onMoveToFolder={handleMoveToFolder}
                   onAddTag={handleAddTag}
+                  onViewDetails={handleViewDetails}
                 />
               ))}
             </div>
@@ -486,6 +495,7 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
                   onDelete={handleDelete}
                   onMoveToFolder={handleMoveToFolder}
                   onAddTag={handleAddTag}
+                  onViewDetails={handleViewDetails}
                 />
               ))}
             </div>
@@ -548,6 +558,13 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
         tags={tags}
         currentTagIds={selectedItemId ? itemTagsMap[selectedItemId] || [] : []}
         onSave={handleConfirmAddTags}
+      />
+
+      <ItemDetailDialog
+        item={viewingItemId ? items.find((i) => i.id === viewingItemId) || null : null}
+        tags={viewingItemId ? tags.filter((t) => itemTagsMap[viewingItemId]?.includes(t.id)) : []}
+        open={itemDetailOpen}
+        onOpenChange={setItemDetailOpen}
       />
     </div>
   )

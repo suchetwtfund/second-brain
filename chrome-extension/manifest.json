@@ -1,15 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Telos - Save to Knowledge Base",
-  "version": "1.0.0",
-  "description": "Save any webpage to your Telos knowledge base with one click",
+  "version": "1.1.0",
+  "description": "Save any webpage or highlighted text to your Telos knowledge base",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "contextMenus"
   ],
   "host_permissions": [
     "https://telos-deploy.vercel.app/*",
-    "http://localhost:3000/*"
+    "http://localhost:3000/*",
+    "<all_urls>"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -25,5 +27,23 @@
     "32": "icons/icon-32.png",
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "commands": {
+    "save-highlight": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+H",
+        "mac": "Command+Shift+H"
+      },
+      "description": "Save highlighted text to Telos"
+    }
   }
 }

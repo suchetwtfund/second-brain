@@ -48,6 +48,18 @@ create table public.item_tags (
   primary key (item_id, tag_id)
 );
 
+-- Highlights table (text highlights from web pages)
+create table public.highlights (
+  id uuid default uuid_generate_v4() primary key,
+  item_id uuid references public.items(id) on delete cascade not null,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  text text not null,
+  color text check (color in ('yellow', 'green', 'blue', 'pink', 'orange')) not null default 'yellow',
+  note text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
 -- Create indexes for better performance
 create index folders_user_id_idx on public.folders(user_id);
 create index folders_parent_id_idx on public.folders(parent_id);
@@ -56,6 +68,8 @@ create index items_folder_id_idx on public.items(folder_id);
 create index items_status_idx on public.items(status);
 create index items_created_at_idx on public.items(created_at desc);
 create index tags_user_id_idx on public.tags(user_id);
+create index highlights_item_id_idx on public.highlights(item_id);
+create index highlights_user_id_idx on public.highlights(user_id);
 
 -- Full-text search index on items
 create index items_search_idx on public.items
@@ -66,6 +80,7 @@ alter table public.folders enable row level security;
 alter table public.items enable row level security;
 alter table public.tags enable row level security;
 alter table public.item_tags enable row level security;
+alter table public.highlights enable row level security;
 
 -- RLS Policies: Users can only access their own data
 
@@ -113,6 +128,16 @@ create policy "Users can delete own item_tags" on public.item_tags
     exists (select 1 from public.items where items.id = item_tags.item_id and items.user_id = auth.uid())
   );
 
+-- Highlights policies
+create policy "Users can view own highlights" on public.highlights
+  for select using (auth.uid() = user_id);
+create policy "Users can create own highlights" on public.highlights
+  for insert with check (auth.uid() = user_id);
+create policy "Users can update own highlights" on public.highlights
+  for update using (auth.uid() = user_id);
+create policy "Users can delete own highlights" on public.highlights
+  for delete using (auth.uid() = user_id);
+
 -- Function to update updated_at timestamp
 create or replace function public.handle_updated_at()
 returns trigger as $$
@@ -129,4 +154,8 @@ create trigger handle_folders_updated_at
 
 create trigger handle_items_updated_at
   before update on public.items
+  for each row execute function public.handle_updated_at();
+
+create trigger handle_highlights_updated_at
+  before update on public.highlights
   for each row execute function public.handle_updated_at();

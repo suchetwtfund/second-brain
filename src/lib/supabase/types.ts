@@ -119,6 +119,38 @@ export type Database = {
           tag_id?: string
         }
       }
+      highlights: {
+        Row: {
+          id: string
+          item_id: string
+          user_id: string
+          text: string
+          color: 'yellow' | 'green' | 'blue' | 'pink' | 'orange'
+          note: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          user_id: string
+          text: string
+          color?: 'yellow' | 'green' | 'blue' | 'pink' | 'orange'
+          note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          user_id?: string
+          text?: string
+          color?: 'yellow' | 'green' | 'blue' | 'pink' | 'orange'
+          note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -141,3 +173,5 @@ export type Folder = Tables<'folders'>
 export type Item = Tables<'items'>
 export type Tag = Tables<'tags'>
 export type ItemTag = Tables<'item_tags'>
+export type Highlight = Tables<'highlights'>
+export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink' | 'orange'

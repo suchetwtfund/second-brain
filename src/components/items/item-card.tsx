@@ -27,6 +27,7 @@ import {
   Tag,
   FileIcon,
   Headphones,
+  Eye,
 } from 'lucide-react'
 import type { Item, Tag as TagType } from '@/lib/supabase/types'
 
@@ -39,6 +40,7 @@ interface ItemCardProps {
   onDelete: (id: string) => void
   onMoveToFolder: (id: string) => void
   onAddTag: (id: string) => void
+  onViewDetails?: (id: string) => void
 }
 
 const contentTypeIcons: Record<string, typeof Video> = {
@@ -72,6 +74,7 @@ export function ItemCard({
   onDelete,
   onMoveToFolder,
   onAddTag,
+  onViewDetails,
 }: ItemCardProps) {
   const [imageError, setImageError] = useState(false)
   const Icon = contentTypeIcons[item.content_type] || LinkIcon
@@ -180,6 +183,12 @@ export function ItemCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {onViewDetails && (
+                <DropdownMenuItem onClick={() => onViewDetails(item.id)}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View details
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => onMarkRead(item.id)}>
                 <Check className="mr-2 h-4 w-4" />
                 Mark as {item.status === 'read' ? 'unread' : 'read'}
@@ -278,6 +287,12 @@ export function ItemCard({
                   Open link
                 </DropdownMenuItem>
               )}
+              {onViewDetails && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onViewDetails(item.id); }}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View details
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkRead(item.id); }}>
                 <Check className="mr-2 h-4 w-4" />
                 Mark as {item.status === 'read' ? 'unread' : 'read'}
@@ -338,6 +353,12 @@ export function ItemCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="center">
+              {onViewDetails && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onViewDetails(item.id); }}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View details
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkRead(item.id); }}>
                 <Check className="mr-2 h-4 w-4" />
                 Mark as {item.status === 'read' ? 'unread' : 'read'}
