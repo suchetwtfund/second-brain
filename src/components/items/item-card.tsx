@@ -20,6 +20,7 @@ import {
   ExternalLink,
   MoreHorizontal,
   Check,
+  CheckCircle2,
   Archive,
   Trash2,
   FolderOpen,
@@ -147,6 +148,24 @@ export function ItemCard({
           {formatDate(item.created_at)}
         </span>
 
+        {/* Read Status Toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => onMarkRead(item.id)}
+          title={item.status === 'read' ? 'Mark as unread' : 'Mark as read'}
+        >
+          <CheckCircle2
+            className={cn(
+              'h-4 w-4 transition-colors',
+              item.status === 'read'
+                ? 'text-red-500'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          />
+        </Button>
+
         {/* Actions */}
         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           {item.url && (
@@ -228,8 +247,24 @@ export function ItemCard({
           {item.content_type}
         </Badge>
 
-        {/* Mobile: Always visible action button */}
-        <div className="absolute right-2 top-2 md:hidden">
+        {/* Mobile: Always visible action buttons */}
+        <div className="absolute right-2 top-2 flex items-center gap-1 md:hidden">
+          <Button
+            size="icon"
+            variant="secondary"
+            className="h-8 w-8"
+            onClick={(e) => { e.stopPropagation(); onMarkRead(item.id); }}
+            title={item.status === 'read' ? 'Mark as unread' : 'Mark as read'}
+          >
+            <CheckCircle2
+              className={cn(
+                'h-5 w-5 transition-colors',
+                item.status === 'read'
+                  ? 'text-red-500'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            />
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="icon" variant="secondary" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
@@ -269,6 +304,26 @@ export function ItemCard({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
+
+        {/* Desktop: Always visible tick button */}
+        <div className="absolute right-2 top-2 hidden md:block">
+          <Button
+            size="icon"
+            variant="secondary"
+            className="h-8 w-8"
+            onClick={(e) => { e.stopPropagation(); onMarkRead(item.id); }}
+            title={item.status === 'read' ? 'Mark as unread' : 'Mark as read'}
+          >
+            <CheckCircle2
+              className={cn(
+                'h-5 w-5 transition-colors',
+                item.status === 'read'
+                  ? 'text-red-500'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            />
+          </Button>
         </div>
 
         {/* Desktop: Hover overlay */}

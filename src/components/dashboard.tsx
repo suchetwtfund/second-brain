@@ -362,29 +362,36 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
     // In a real app, you'd filter items or make an API call
   }, [])
 
-  const filteredItems = items.filter((item) => {
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      if (!item.title.toLowerCase().includes(query) &&
-          !item.description?.toLowerCase().includes(query) &&
-          !item.content?.toLowerCase().includes(query)) {
+  const filteredItems = items
+    .filter((item) => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase()
+        if (!item.title.toLowerCase().includes(query) &&
+            !item.description?.toLowerCase().includes(query) &&
+            !item.content?.toLowerCase().includes(query)) {
+          return false
+        }
+      }
+
+      // Status filter
+      if (filterStatus !== 'all' && item.status !== filterStatus) {
         return false
       }
-    }
 
-    // Status filter
-    if (filterStatus !== 'all' && item.status !== filterStatus) {
-      return false
-    }
+      // Type filter (multi-select)
+      if (filterTypes.length > 0 && !filterTypes.includes(item.content_type as FilterType)) {
+        return false
+      }
 
-    // Type filter (multi-select)
-    if (filterTypes.length > 0 && !filterTypes.includes(item.content_type as FilterType)) {
-      return false
-    }
-
-    return true
-  })
+      return true
+    })
+    .sort((a, b) => {
+      // Unread items first, read items last
+      if (a.status === 'unread' && b.status !== 'unread') return -1
+      if (a.status !== 'unread' && b.status === 'unread') return 1
+      return 0 // Maintain relative order otherwise
+    })
 
   return (
     <div className="flex h-screen overflow-hidden">
