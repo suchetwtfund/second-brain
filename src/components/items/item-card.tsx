@@ -306,26 +306,6 @@ export function ItemCard({
           </DropdownMenu>
         </div>
 
-        {/* Desktop: Always visible tick button */}
-        <div className="absolute right-2 top-2 hidden md:block">
-          <Button
-            size="icon"
-            variant="secondary"
-            className="h-8 w-8"
-            onClick={(e) => { e.stopPropagation(); onMarkRead(item.id); }}
-            title={item.status === 'read' ? 'Mark as unread' : 'Mark as read'}
-          >
-            <CheckCircle2
-              className={cn(
-                'h-5 w-5 transition-colors',
-                item.status === 'read'
-                  ? 'text-red-500'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            />
-          </Button>
-        </div>
-
         {/* Desktop: Hover overlay */}
         <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-background/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 md:flex">
           {item.url && (
@@ -334,6 +314,23 @@ export function ItemCard({
               Open
             </Button>
           )}
+          <Button
+            size="sm"
+            variant="secondary"
+            className="gap-1"
+            onClick={(e) => { e.stopPropagation(); onMarkRead(item.id); }}
+            title={item.status === 'read' ? 'Mark as unread' : 'Mark as read'}
+          >
+            <CheckCircle2
+              className={cn(
+                'h-4 w-4 transition-colors',
+                item.status === 'read'
+                  ? 'text-red-500'
+                  : 'text-muted-foreground'
+              )}
+            />
+            {item.status === 'read' ? 'Unread' : 'Read'}
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="secondary" onClick={(e) => e.stopPropagation()}>
