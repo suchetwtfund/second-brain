@@ -80,23 +80,53 @@ async function saveHighlight(tab, text, color) {
 
   try {
     // Use our API endpoint which handles auto-creating items
+    const requestBody = {
+      url: tab.url,
+      title: tab.title,
+      text: text.trim(),
+      color,
+    }
+
+    console.log('Saving highlight:', { url: tab.url, color, textLength: text.length })
+
     const response = await fetch(`${API_BASE}/api/highlights`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({
-        url: tab.url,
-        title: tab.title,
-        text: text.trim(),
-        color,
-      }),
+      body: JSON.stringify(requestBody),
     })
 
+    console.log('Highlight API response status:', response.status)
+
+    // Get response text first to avoid JSON parse errors on empty body
+    const responseText = await response.text()
+    console.log('Highlight API response body:', responseText)
+
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || 'Failed to save highlight')
+      let errorMessage = 'Failed to save highlight'
+      if (responseText) {
+        try {
+          const errorData = JSON.parse(responseText)
+          errorMessage = errorData.error || errorMessage
+        } catch {
+          errorMessage = responseText || errorMessage
+        }
+      } else if (response.status === 401) {
+        errorMessage = 'Session expired. Please sign in again'
+      } else if (response.status === 400) {
+        errorMessage = 'Invalid request'
+      } else if (response.status === 0) {
+        errorMessage = 'Network error - check if the API is accessible'
+      }
+      throw new Error(errorMessage)
+    }
+
+    // Parse successful response
+    if (responseText) {
+      const result = JSON.parse(responseText)
+      console.log('Highlight saved:', result)
     }
 
     await showNotification(tab.id, 'Highlight saved!', 'success')

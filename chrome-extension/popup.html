@@ -119,23 +119,26 @@
       display: block;
     }
 
-    /* Save View */
-    .save-view {
+    /* Saving View */
+    .saving-view {
       display: none;
+      text-align: center;
+      padding: 20px 16px;
     }
 
-    .save-view.active {
+    .saving-view.active {
       display: block;
     }
 
-    .page-info {
+    .saving-page-info {
       background: #1c1c1c;
       border-radius: 8px;
       padding: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
+      text-align: left;
     }
 
-    .page-title {
+    .saving-page-title {
       font-size: 14px;
       font-weight: 500;
       margin-bottom: 4px;
@@ -144,7 +147,7 @@
       text-overflow: ellipsis;
     }
 
-    .page-url {
+    .saving-page-url {
       font-size: 12px;
       color: #888;
       white-space: nowrap;
@@ -152,27 +155,35 @@
       text-overflow: ellipsis;
     }
 
-    .user-info {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 12px;
-      color: #888;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #333;
+    .progress-container {
+      margin-bottom: 16px;
     }
 
-    .logout-btn {
-      background: none;
-      border: none;
-      color: #888;
-      cursor: pointer;
-      font-size: 12px;
+    .progress-bar {
+      height: 4px;
+      background: #1c1c1c;
+      border-radius: 2px;
+      overflow: hidden;
     }
 
-    .logout-btn:hover {
-      color: #fafafa;
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6, #3b82f6);
+      background-size: 200% 100%;
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.3s ease-out;
+      animation: shimmer 1.5s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .saving-status {
+      font-size: 13px;
+      color: #888;
     }
 
     /* Success View */
@@ -195,6 +206,13 @@
       align-items: center;
       justify-content: center;
       margin: 0 auto 12px;
+      animation: scaleIn 0.3s ease-out;
+    }
+
+    @keyframes scaleIn {
+      0% { transform: scale(0); opacity: 0; }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); opacity: 1; }
     }
 
     .success-icon svg {
@@ -212,6 +230,40 @@
     .success-subtext {
       font-size: 12px;
       color: #888;
+    }
+
+    /* Error View */
+    .error-view {
+      display: none;
+      text-align: center;
+      padding: 20px 16px;
+    }
+
+    .error-view.active {
+      display: block;
+    }
+
+    .error-icon {
+      width: 48px;
+      height: 48px;
+      background: #ef4444;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+    }
+
+    .error-icon svg {
+      width: 24px;
+      height: 24px;
+      color: white;
+    }
+
+    .error-text {
+      font-size: 14px;
+      color: #ef4444;
+      margin-bottom: 12px;
     }
 
     /* Loading */
@@ -252,20 +304,18 @@
       <button id="openAppBtn" class="btn btn-secondary">Open Telos App</button>
     </div>
 
-    <!-- Save View -->
-    <div id="saveView" class="save-view">
-      <div class="page-info">
-        <div id="pageTitle" class="page-title">Loading...</div>
-        <div id="pageUrl" class="page-url"></div>
+    <!-- Saving View (shown immediately when logged in) -->
+    <div id="savingView" class="saving-view">
+      <div class="saving-page-info">
+        <div id="savingPageTitle" class="saving-page-title">Loading...</div>
+        <div id="savingPageUrl" class="saving-page-url"></div>
       </div>
-      <button id="saveBtn" class="btn btn-primary">
-        <span id="saveBtnText">Save to Telos</span>
-      </button>
-      <div id="saveError" class="error"></div>
-      <div class="user-info">
-        <span id="userEmail"></span>
-        <button id="logoutBtn" class="logout-btn">Sign out</button>
+      <div class="progress-container">
+        <div class="progress-bar">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
       </div>
+      <div id="savingStatus" class="saving-status">Saving to Telos...</div>
     </div>
 
     <!-- Success View -->
@@ -277,6 +327,18 @@
       </div>
       <div class="success-text">Saved!</div>
       <div class="success-subtext">Added to your Telos knowledge base</div>
+    </div>
+
+    <!-- Error View -->
+    <div id="errorView" class="error-view">
+      <div class="error-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </div>
+      <div id="errorText" class="error-text">Something went wrong</div>
+      <button id="retryBtn" class="btn btn-primary">Try Again</button>
+      <button id="openAppFromError" class="btn btn-secondary">Open Telos App</button>
     </div>
   </div>
 

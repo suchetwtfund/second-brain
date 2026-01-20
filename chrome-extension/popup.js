@@ -7,20 +7,21 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // DOM Elements
 const loginView = document.getElementById('loginView')
-const saveView = document.getElementById('saveView')
+const savingView = document.getElementById('savingView')
 const successView = document.getElementById('successView')
+const errorView = document.getElementById('errorView')
 const emailInput = document.getElementById('email')
 const passwordInput = document.getElementById('password')
 const loginBtn = document.getElementById('loginBtn')
 const openAppBtn = document.getElementById('openAppBtn')
 const loginError = document.getElementById('loginError')
-const pageTitle = document.getElementById('pageTitle')
-const pageUrl = document.getElementById('pageUrl')
-const saveBtn = document.getElementById('saveBtn')
-const saveBtnText = document.getElementById('saveBtnText')
-const saveError = document.getElementById('saveError')
-const userEmail = document.getElementById('userEmail')
-const logoutBtn = document.getElementById('logoutBtn')
+const savingPageTitle = document.getElementById('savingPageTitle')
+const savingPageUrl = document.getElementById('savingPageUrl')
+const progressFill = document.getElementById('progressFill')
+const savingStatus = document.getElementById('savingStatus')
+const errorText = document.getElementById('errorText')
+const retryBtn = document.getElementById('retryBtn')
+const openAppFromError = document.getElementById('openAppFromError')
 
 // State
 let currentTab = null
@@ -39,7 +40,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Verify session is still valid
     const isValid = await verifySession()
     if (isValid) {
-      showSaveView()
+      // Immediately start saving
+      startSaving()
     } else {
       await chrome.storage.local.remove(['session'])
       session = null
@@ -55,8 +57,10 @@ loginBtn.addEventListener('click', handleLogin)
 openAppBtn.addEventListener('click', () => {
   chrome.tabs.create({ url: API_BASE })
 })
-saveBtn.addEventListener('click', handleSave)
-logoutBtn.addEventListener('click', handleLogout)
+retryBtn.addEventListener('click', startSaving)
+openAppFromError.addEventListener('click', () => {
+  chrome.tabs.create({ url: API_BASE })
+})
 
 // Handle Enter key in inputs
 emailInput.addEventListener('keypress', (e) => {
@@ -66,33 +70,43 @@ passwordInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') handleLogin()
 })
 
-// Functions
+// View Functions
 function showLoginView() {
   loginView.classList.add('active')
-  saveView.classList.remove('active')
+  savingView.classList.remove('active')
   successView.classList.remove('active')
+  errorView.classList.remove('active')
 }
 
-function showSaveView() {
+function showSavingView() {
   loginView.classList.remove('active')
-  saveView.classList.add('active')
+  savingView.classList.add('active')
   successView.classList.remove('active')
+  errorView.classList.remove('active')
 
   // Show current page info
-  pageTitle.textContent = currentTab?.title || 'Unknown page'
-  pageUrl.textContent = currentTab?.url || ''
-  userEmail.textContent = session?.user?.email || ''
+  savingPageTitle.textContent = currentTab?.title || 'Unknown page'
+  savingPageUrl.textContent = currentTab?.url || ''
 }
 
 function showSuccessView() {
   loginView.classList.remove('active')
-  saveView.classList.remove('active')
+  savingView.classList.remove('active')
   successView.classList.add('active')
+  errorView.classList.remove('active')
 
-  // Auto-close after 1.5 seconds
+  // Auto-close after 1.2 seconds
   setTimeout(() => {
     window.close()
-  }, 1500)
+  }, 1200)
+}
+
+function showErrorView(message) {
+  loginView.classList.remove('active')
+  savingView.classList.remove('active')
+  successView.classList.remove('active')
+  errorView.classList.add('active')
+  errorText.textContent = message || 'Something went wrong'
 }
 
 function showError(element, message) {
@@ -104,9 +118,17 @@ function hideError(element) {
   element.classList.remove('show')
 }
 
+// Progress Animation
+function setProgress(percent, status) {
+  progressFill.style.width = `${percent}%`
+  if (status) {
+    savingStatus.textContent = status
+  }
+}
+
+// Session Functions
 async function verifySession() {
   try {
-    // First try with current access_token
     const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: {
         'Authorization': `Bearer ${session.access_token}`,
@@ -150,6 +172,7 @@ async function refreshSession() {
   }
 }
 
+// Login Handler
 async function handleLogin() {
   const email = emailInput.value.trim()
   const password = passwordInput.value
@@ -183,7 +206,8 @@ async function handleLogin() {
     session = data
     await chrome.storage.local.set({ session: data })
 
-    showSaveView()
+    // Immediately start saving after login
+    startSaving()
   } catch (error) {
     showError(loginError, error.message)
   } finally {
@@ -192,18 +216,19 @@ async function handleLogin() {
   }
 }
 
-async function handleSave() {
+// Save Handler - starts immediately
+async function startSaving() {
   if (!currentTab?.url) {
-    showError(saveError, 'No URL to save')
+    showErrorView('No URL to save')
     return
   }
 
-  saveBtn.disabled = true
-  saveBtnText.innerHTML = '<span class="loading"></span>'
-  hideError(saveError)
+  showSavingView()
+  setProgress(10, 'Fetching page info...')
 
   try {
-    // First, fetch metadata
+    // Fetch metadata
+    setProgress(30, 'Fetching page info...')
     const metadataResponse = await fetch(
       `${API_BASE}/api/metadata?url=${encodeURIComponent(currentTab.url)}`
     )
@@ -213,7 +238,9 @@ async function handleSave() {
       metadata = await metadataResponse.json()
     }
 
-    // Save to Supabase directly (faster than going through our API)
+    setProgress(60, 'Saving to Telos...')
+
+    // Save to Supabase
     const response = await fetch(`${SUPABASE_URL}/rest/v1/items`, {
       method: 'POST',
       headers: {
@@ -234,21 +261,20 @@ async function handleSave() {
       }),
     })
 
+    setProgress(90, 'Almost done...')
+
     if (!response.ok) {
       const error = await response.json()
       throw new Error(error.message || 'Failed to save')
     }
 
-    showSuccessView()
-  } catch (error) {
-    showError(saveError, error.message)
-    saveBtn.disabled = false
-    saveBtnText.textContent = 'Save to Telos'
-  }
-}
+    setProgress(100, 'Done!')
 
-async function handleLogout() {
-  await chrome.storage.local.remove(['session'])
-  session = null
-  showLoginView()
+    // Brief delay to show completion
+    setTimeout(() => {
+      showSuccessView()
+    }, 200)
+  } catch (error) {
+    showErrorView(error.message)
+  }
 }
