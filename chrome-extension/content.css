@@ -148,27 +148,26 @@
   height: 24px !important;
   min-width: 24px !important;
   min-height: 24px !important;
-  border-radius: 4px !important;
+  border-radius: 50% !important;
   border: none !important;
-  background: #374151 !important;
-  color: #f87171 !important;
+  background: #ef4444 !important;
+  color: white !important;
   cursor: pointer !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   transition: all 0.15s ease !important;
-  padding: 4px !important;
-  margin-left: 2px !important;
+  padding: 0 !important;
+  margin-left: 4px !important;
+  font-size: 18px !important;
+  font-weight: bold !important;
+  line-height: 1 !important;
+  font-family: sans-serif !important;
 }
 
 .telos-toolbar-delete:hover {
   background: #dc2626 !important;
-  color: white !important;
-}
-
-.telos-toolbar-delete svg {
-  width: 14px !important;
-  height: 14px !important;
+  transform: scale(1.1) !important;
 }
 
 /* ==================== Highlights ==================== */

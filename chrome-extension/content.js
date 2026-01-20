@@ -312,11 +312,7 @@ function showHighlightEditToolbar(highlight, highlightId, currentColor) {
   const deleteBtn = document.createElement('button')
   deleteBtn.className = 'telos-toolbar-delete'
   deleteBtn.title = 'Remove highlight'
-  deleteBtn.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-      <path d="M18 6L6 18M6 6l12 12"/>
-    </svg>
-  `
+  deleteBtn.textContent = '×'
   deleteBtn.addEventListener('mousedown', (e) => {
     e.preventDefault()
     e.stopPropagation()
