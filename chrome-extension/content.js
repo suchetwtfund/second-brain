@@ -322,6 +322,7 @@ function showHighlightEditToolbar(highlight, highlightId, currentColor) {
     e.stopPropagation()
   })
   deleteBtn.addEventListener('click', (e) => {
+    console.log('[Telos] Delete button clicked for:', highlightId)
     e.preventDefault()
     e.stopPropagation()
     deleteHighlight(highlightId)
@@ -377,6 +378,8 @@ function changeHighlightColor(highlightId, newColor) {
 }
 
 function deleteHighlight(highlightId) {
+  console.log('[Telos] deleteHighlight called for:', highlightId)
+
   hideToolbar()
   hoveredHighlightId = null
 
@@ -389,10 +392,12 @@ function deleteHighlight(highlightId) {
     action: 'deleteHighlight',
     highlightId: highlightId
   }, (response) => {
+    console.log('[Telos] deleteHighlight response:', response)
     if (response?.success) {
       removeHighlightFromPage(highlightId)
       showNotification('Highlight removed', 'success')
     } else {
+      console.log('[Telos] Delete failed:', response?.error)
       showNotification('Failed to remove highlight', 'error')
     }
   })

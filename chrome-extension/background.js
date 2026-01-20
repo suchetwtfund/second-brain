@@ -280,11 +280,15 @@ async function getHighlightsForUrl(url) {
 }
 
 async function deleteHighlight(highlightId) {
+  console.log('[Telos BG] deleteHighlight called for:', highlightId)
+
   const { session } = await chrome.storage.local.get(['session'])
 
   if (!session?.access_token) {
     throw new Error('Not signed in')
   }
+
+  console.log('[Telos BG] Calling DELETE API for highlight:', highlightId)
 
   const response = await fetch(`${API_BASE}/api/highlights/${highlightId}`, {
     method: 'DELETE',
@@ -293,10 +297,15 @@ async function deleteHighlight(highlightId) {
     },
   })
 
+  console.log('[Telos BG] Delete response status:', response.status)
+
   if (!response.ok) {
     const text = await response.text()
+    console.log('[Telos BG] Delete error:', text)
     throw new Error(text || 'Failed to delete highlight')
   }
+
+  console.log('[Telos BG] Delete successful')
 }
 
 async function updateHighlightColor(highlightId, color) {
