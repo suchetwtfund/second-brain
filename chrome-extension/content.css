@@ -145,22 +145,23 @@
 
 /* ==================== Highlights ==================== */
 .telos-highlight {
-  cursor: pointer;
-  border-radius: 2px;
-  transition: opacity 0.2s ease;
+  cursor: pointer !important;
+  border-radius: 2px !important;
+  transition: opacity 0.2s ease !important;
+  display: inline !important;
 }
 
 .telos-highlight:hover {
-  opacity: 0.8;
+  opacity: 0.8 !important;
 }
 
 .telos-highlight.telos-highlight-flash {
-  animation: telos-highlight-flash 0.5s ease 3;
+  animation: telos-highlight-flash 0.5s ease 3 !important;
 }
 
 /* Highlight colors with semi-transparent backgrounds */
-.telos-highlight-yellow { background: rgba(250, 204, 21, 0.4); }
-.telos-highlight-green { background: rgba(34, 197, 94, 0.4); }
-.telos-highlight-blue { background: rgba(59, 130, 246, 0.4); }
-.telos-highlight-pink { background: rgba(236, 72, 153, 0.4); }
-.telos-highlight-orange { background: rgba(249, 115, 22, 0.4); }
+.telos-highlight.telos-highlight-yellow { background: rgba(250, 204, 21, 0.4) !important; background-color: rgba(250, 204, 21, 0.4) !important; }
+.telos-highlight.telos-highlight-green { background: rgba(34, 197, 94, 0.4) !important; background-color: rgba(34, 197, 94, 0.4) !important; }
+.telos-highlight.telos-highlight-blue { background: rgba(59, 130, 246, 0.4) !important; background-color: rgba(59, 130, 246, 0.4) !important; }
+.telos-highlight.telos-highlight-pink { background: rgba(236, 72, 153, 0.4) !important; background-color: rgba(236, 72, 153, 0.4) !important; }
+.telos-highlight.telos-highlight-orange { background: rgba(249, 115, 22, 0.4) !important; background-color: rgba(249, 115, 22, 0.4) !important; }

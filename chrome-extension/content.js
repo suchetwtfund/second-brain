@@ -176,8 +176,19 @@ function saveHighlightWithColor(color) {
   // Generate temporary ID for immediate visual feedback
   const tempId = 'temp-' + Date.now()
 
-  // Apply highlight immediately before selection is cleared
-  const applied = applyHighlightToRange(selectionRange, color, tempId)
+  // Try to apply highlight immediately before selection is cleared
+  let applied = false
+  try {
+    applied = applyHighlightToRange(selectionRange, color, tempId)
+  } catch (e) {
+    console.log('Range highlight failed:', e)
+  }
+
+  // If range-based highlight failed, use text matching
+  if (!applied) {
+    console.log('Falling back to text matching for:', selectionText.substring(0, 50))
+    applyHighlightByText(selectionText, color, tempId)
+  }
 
   // Clear selection
   window.getSelection()?.removeAllRanges()
@@ -205,24 +216,28 @@ function saveHighlightWithColor(color) {
 // ==================== Visual Highlighting ====================
 
 function applyHighlightToRange(range, color, highlightId) {
-  try {
-    // Create wrapper span
-    const wrapper = document.createElement('span')
-    wrapper.className = `telos-highlight telos-highlight-${color}`
-    wrapper.setAttribute('data-telos-highlight-id', highlightId)
-
-    // Wrap the selection
-    range.surroundContents(wrapper)
-
-    // Flash to confirm
-    flashHighlight(wrapper)
-    return true
-  } catch (e) {
-    // If surroundContents fails (e.g., selection spans multiple elements),
-    // fall back to text matching
-    console.log('Could not wrap selection directly:', e.message)
+  // Check if range is valid
+  if (!range || range.collapsed) {
+    console.log('Range is invalid or collapsed')
     return false
   }
+
+  // Create wrapper span
+  const wrapper = document.createElement('span')
+  wrapper.className = `telos-highlight telos-highlight-${color}`
+  wrapper.setAttribute('data-telos-highlight-id', highlightId)
+
+  // Try to wrap the selection
+  range.surroundContents(wrapper)
+
+  // Verify it was applied
+  if (wrapper.parentNode) {
+    console.log('Highlight applied via range')
+    flashHighlight(wrapper)
+    return true
+  }
+
+  return false
 }
 
 function loadExistingHighlights() {
