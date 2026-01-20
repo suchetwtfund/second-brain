@@ -118,9 +118,24 @@ function checkSelection() {
   }
 }
 
+// Check if extension context is still valid
+function isExtensionContextValid() {
+  try {
+    return chrome.runtime && !!chrome.runtime.id
+  } catch {
+    return false
+  }
+}
+
 function showToolbar(selection) {
   // Remove existing toolbar
   hideToolbar()
+
+  // Check if extension context is still valid
+  if (!isExtensionContextValid()) {
+    console.log('[Telos] Extension context invalidated, please refresh the page')
+    return
+  }
 
   try {
     const range = selection.getRangeAt(0)
@@ -161,16 +176,20 @@ function showToolbar(selection) {
       toolbar.appendChild(btn)
     })
 
-    // Add divider and logo
+    // Add divider and logo (skip logo if context invalid)
     const divider = document.createElement('div')
     divider.className = 'telos-toolbar-divider'
     toolbar.appendChild(divider)
 
-    const logo = document.createElement('img')
-    logo.className = 'telos-toolbar-logo'
-    logo.src = chrome.runtime.getURL('icons/icon-32.png')
-    logo.alt = 'Telos'
-    toolbar.appendChild(logo)
+    try {
+      const logo = document.createElement('img')
+      logo.className = 'telos-toolbar-logo'
+      logo.src = chrome.runtime.getURL('icons/icon-32.png')
+      logo.alt = 'Telos'
+      toolbar.appendChild(logo)
+    } catch {
+      // Skip logo if extension context is invalid
+    }
 
     document.body.appendChild(toolbar)
 
@@ -303,6 +322,11 @@ function hideHighlightTooltip() {
 function deleteHighlightWithConfirm(highlightId) {
   hideHighlightTooltip()
 
+  if (!isExtensionContextValid()) {
+    showNotification('Please refresh the page to use Telos', 'error')
+    return
+  }
+
   // Delete via background script
   chrome.runtime.sendMessage({
     action: 'deleteHighlight',
@@ -319,6 +343,12 @@ function deleteHighlightWithConfirm(highlightId) {
 
 function saveHighlightWithColor(color) {
   console.log('[Telos] saveHighlightWithColor:', color)
+
+  if (!isExtensionContextValid()) {
+    console.log('[Telos] Extension context invalidated, please refresh the page')
+    showNotification('Please refresh the page to use Telos', 'error')
+    return
+  }
 
   if (!currentSelection) {
     console.log('[Telos] No currentSelection')
@@ -406,6 +436,11 @@ const MAX_HIGHLIGHT_RETRIES = 5
 
 function loadExistingHighlights() {
   if (isApplyingHighlights) return
+  if (!isExtensionContextValid()) {
+    console.log('[Telos] Extension context invalidated, cannot load highlights')
+    return
+  }
+
   isApplyingHighlights = true
   highlightRetryCount = 0
 
