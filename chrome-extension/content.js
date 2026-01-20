@@ -168,23 +168,24 @@ function showToolbar(selection) {
 
     document.body.appendChild(toolbar)
 
-    // Position toolbar above selection (or below if no space)
+    // Position toolbar above selection (using fixed positioning - no scroll offset needed)
     const toolbarRect = toolbar.getBoundingClientRect()
-    const scrollTop = window.scrollY
-    const scrollLeft = window.scrollX
 
-    let top = rect.top + scrollTop - toolbarRect.height - 10
-    let left = rect.left + scrollLeft + (rect.width / 2) - (toolbarRect.width / 2)
+    // rect is already in viewport coordinates from getBoundingClientRect
+    let top = rect.top - toolbarRect.height - 10
+    let left = rect.left + (rect.width / 2) - (toolbarRect.width / 2)
 
-    // If not enough space above, position below
-    if (top < scrollTop + 10) {
-      top = rect.bottom + scrollTop + 10
+    // If not enough space above, position below the selection
+    if (top < 10) {
+      top = rect.bottom + 10
       toolbar.classList.add('telos-toolbar-below')
     }
 
     // Keep within viewport horizontally
-    const maxLeft = scrollLeft + window.innerWidth - toolbarRect.width - 10
-    left = Math.max(scrollLeft + 10, Math.min(left, maxLeft))
+    left = Math.max(10, Math.min(left, window.innerWidth - toolbarRect.width - 10))
+
+    // Keep within viewport vertically
+    top = Math.max(10, Math.min(top, window.innerHeight - toolbarRect.height - 10))
 
     toolbar.style.top = `${top}px`
     toolbar.style.left = `${left}px`
