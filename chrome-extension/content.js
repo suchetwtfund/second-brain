@@ -41,13 +41,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === 'showNotification') {
     showNotification(request.message, request.type)
     sendResponse({ success: true })
-  } else if (request.action === 'highlightSaved') {
-    // Apply the highlight visually after saving
-    if (request.highlight && currentSelection) {
-      applyHighlightToSelection(currentSelection, request.highlight.color, request.highlight.id)
-      currentSelection = null
-    }
-    sendResponse({ success: true })
   } else if (request.action === 'scrollToHighlight') {
     scrollToHighlight(request.highlightId)
     sendResponse({ success: true })
@@ -175,22 +168,44 @@ function hideToolbar() {
 function saveHighlightWithColor(color) {
   if (!currentSelection) return
 
+  const selectionText = currentSelection.text
+  const selectionRange = currentSelection.range
+
   hideToolbar()
+
+  // Generate temporary ID for immediate visual feedback
+  const tempId = 'temp-' + Date.now()
+
+  // Apply highlight immediately before selection is cleared
+  const applied = applyHighlightToRange(selectionRange, color, tempId)
+
+  // Clear selection
+  window.getSelection()?.removeAllRanges()
+  currentSelection = null
 
   // Send message to background to save
   chrome.runtime.sendMessage({
     action: 'saveHighlightFromContent',
-    text: currentSelection.text,
+    text: selectionText,
     color: color
+  }, (response) => {
+    if (response?.highlight?.id) {
+      // Update temp ID with real ID
+      const tempHighlights = document.querySelectorAll(`[data-telos-highlight-id="${tempId}"]`)
+      tempHighlights.forEach(el => {
+        el.setAttribute('data-telos-highlight-id', response.highlight.id)
+      })
+    } else if (response?.error) {
+      // Remove highlight if save failed
+      removeHighlightFromPage(tempId)
+    }
   })
 }
 
 // ==================== Visual Highlighting ====================
 
-function applyHighlightToSelection(selectionInfo, color, highlightId) {
+function applyHighlightToRange(range, color, highlightId) {
   try {
-    const range = selectionInfo.range
-
     // Create wrapper span
     const wrapper = document.createElement('span')
     wrapper.className = `telos-highlight telos-highlight-${color}`
@@ -201,10 +216,12 @@ function applyHighlightToSelection(selectionInfo, color, highlightId) {
 
     // Flash to confirm
     flashHighlight(wrapper)
+    return true
   } catch (e) {
     // If surroundContents fails (e.g., selection spans multiple elements),
-    // try alternative approach
-    console.log('Could not wrap selection directly, using text matching')
+    // fall back to text matching
+    console.log('Could not wrap selection directly:', e.message)
+    return false
   }
 }
 

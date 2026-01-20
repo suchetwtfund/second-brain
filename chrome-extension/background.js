@@ -157,18 +157,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 async function handleSaveFromContent(tab, text, color) {
   const result = await saveHighlight(tab, text, color)
 
-  // Notify content script to apply the highlight visually
+  // Notify side panel to refresh if save was successful
   if (result?.highlight) {
-    try {
-      await chrome.tabs.sendMessage(tab.id, {
-        action: 'highlightSaved',
-        highlight: result.highlight
-      })
-    } catch {
-      // Content script might not be ready
-    }
-
-    // Notify side panel to refresh
     notifySidePanelUpdate()
   }
 
