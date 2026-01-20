@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET - List highlights for an item
+// GET - List highlights for an item (by item_id or url)
 export async function GET(request: NextRequest) {
   try {
     const auth = await getAuthenticatedUser(request)
@@ -171,10 +171,45 @@ export async function GET(request: NextRequest) {
     const { user, supabase } = auth
     const { searchParams } = new URL(request.url)
     const itemId = searchParams.get('item_id')
+    const url = searchParams.get('url')
 
+    // Support fetching by URL (for extension side panel)
+    if (url) {
+      // First find the item by URL
+      const { data: item } = await supabase
+        .from('items')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('url', url)
+        .single()
+
+      if (!item) {
+        // No item for this URL, return empty highlights
+        return NextResponse.json({ highlights: [] })
+      }
+
+      const { data: highlights, error } = await supabase
+        .from('highlights')
+        .select('*')
+        .eq('item_id', item.id)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Fetch highlights error:', error)
+        return NextResponse.json(
+          { error: 'Failed to fetch highlights' },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json({ highlights })
+    }
+
+    // Original behavior: fetch by item_id
     if (!itemId) {
       return NextResponse.json(
-        { error: 'item_id query parameter is required' },
+        { error: 'item_id or url query parameter is required' },
         { status: 400 }
       )
     }
