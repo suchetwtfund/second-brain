@@ -594,13 +594,31 @@ function applyHighlightByText(text, color, highlightId) {
         normalizedText: normalizeText(nodeText),
         start: accumulatedText.length
       })
-      accumulatedText += normalizeText(nodeText)
+      // Add space between nodes to handle element boundaries
+      accumulatedText += normalizeText(nodeText) + ' '
+    }
+  }
+  accumulatedText = accumulatedText.trim()
+
+  console.log('[Telos] Searching for:', normalizedSearchText.substring(0, 50))
+  console.log('[Telos] In accumulated text length:', accumulatedText.length)
+
+  // Try exact match first
+  let matchIndex = accumulatedText.indexOf(normalizedSearchText)
+
+  // If not found, try with more flexible matching (ignore extra spaces)
+  if (matchIndex === -1) {
+    const flexibleSearch = normalizedSearchText.replace(/\s+/g, '\\s+')
+    const regex = new RegExp(flexibleSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\s\+/g, '\\s+'))
+    const match = accumulatedText.match(regex)
+    if (match) {
+      matchIndex = match.index
+      console.log('[Telos] Found with flexible match at:', matchIndex)
     }
   }
 
-  const matchIndex = accumulatedText.indexOf(normalizedSearchText)
   if (matchIndex === -1) {
-    console.log('[Telos] Text not found in page')
+    console.log('[Telos] Text not found. First 200 chars of page:', accumulatedText.substring(0, 200))
     return false
   }
 
