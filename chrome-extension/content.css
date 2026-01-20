@@ -149,10 +149,11 @@
   border-radius: 2px !important;
   transition: opacity 0.2s ease !important;
   display: inline !important;
+  position: relative !important;
 }
 
 .telos-highlight:hover {
-  opacity: 0.8 !important;
+  opacity: 0.9 !important;
 }
 
 .telos-highlight.telos-highlight-flash {
@@ -165,3 +166,64 @@
 .telos-highlight.telos-highlight-blue { background: rgba(59, 130, 246, 0.4) !important; background-color: rgba(59, 130, 246, 0.4) !important; }
 .telos-highlight.telos-highlight-pink { background: rgba(236, 72, 153, 0.4) !important; background-color: rgba(236, 72, 153, 0.4) !important; }
 .telos-highlight.telos-highlight-orange { background: rgba(249, 115, 22, 0.4) !important; background-color: rgba(249, 115, 22, 0.4) !important; }
+
+/* ==================== Highlight Hover Tooltip ==================== */
+#telos-highlight-tooltip {
+  position: fixed;
+  z-index: 2147483646;
+  background: #1f2937;
+  border-radius: 6px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  animation: telos-fade-in 0.1s ease-out;
+}
+
+#telos-highlight-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #1f2937;
+}
+
+#telos-highlight-tooltip.tooltip-below::before {
+  bottom: auto;
+  top: -5px;
+  border-top: none;
+  border-bottom: 5px solid #1f2937;
+}
+
+.telos-tooltip-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.telos-tooltip-btn:hover {
+  background: #374151;
+  color: #f3f4f6;
+}
+
+.telos-tooltip-btn.telos-delete-btn:hover {
+  background: #7f1d1d;
+  color: #fecaca;
+}
+
+.telos-tooltip-btn svg {
+  width: 14px;
+  height: 14px;
+}

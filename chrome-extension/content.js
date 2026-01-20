@@ -6,6 +6,7 @@ const HIGHLIGHT_COLORS = ['yellow', 'green', 'blue', 'pink', 'orange']
 // Track current selection and toolbar state
 let currentSelection = null
 let toolbar = null
+let highlightTooltip = null
 let isApplyingHighlights = false
 let selectionTimeout = null
 
@@ -32,10 +33,15 @@ function initializeTelos() {
 
   // Hide toolbar on scroll or click outside
   document.addEventListener('scroll', hideToolbar, true)
+  document.addEventListener('scroll', hideHighlightTooltip, true)
   document.addEventListener('mousedown', handleMouseDown, true)
 
   // Also listen on window for edge cases
   window.addEventListener('mouseup', handleSelectionChange, true)
+
+  // Listen for hover on highlights (using event delegation)
+  document.addEventListener('mouseover', handleHighlightHover, true)
+  document.addEventListener('mouseout', handleHighlightMouseOut, true)
 }
 
 // ==================== Message Handling ====================
@@ -203,6 +209,114 @@ function hideToolbar() {
   }
 }
 
+// ==================== Highlight Hover Tooltip ====================
+
+function handleHighlightHover(e) {
+  const highlight = e.target.closest('.telos-highlight')
+  if (!highlight) return
+
+  // Don't show tooltip if toolbar is visible
+  if (toolbar) return
+
+  const highlightId = highlight.getAttribute('data-telos-highlight-id')
+  if (!highlightId || highlightId.startsWith('temp-')) return
+
+  showHighlightTooltip(highlight, highlightId)
+}
+
+function handleHighlightMouseOut(e) {
+  const highlight = e.target.closest('.telos-highlight')
+  const tooltip = e.relatedTarget?.closest('#telos-highlight-tooltip')
+
+  // Don't hide if moving to tooltip or within same highlight
+  if (tooltip) return
+
+  // Small delay to allow moving to tooltip
+  setTimeout(() => {
+    if (highlightTooltip && !highlightTooltip.matches(':hover')) {
+      const highlightStillHovered = document.querySelector('.telos-highlight:hover')
+      if (!highlightStillHovered) {
+        hideHighlightTooltip()
+      }
+    }
+  }, 100)
+}
+
+function showHighlightTooltip(highlight, highlightId) {
+  hideHighlightTooltip()
+
+  const rect = highlight.getBoundingClientRect()
+
+  highlightTooltip = document.createElement('div')
+  highlightTooltip.id = 'telos-highlight-tooltip'
+  highlightTooltip.setAttribute('data-highlight-id', highlightId)
+
+  // Delete button
+  const deleteBtn = document.createElement('button')
+  deleteBtn.className = 'telos-tooltip-btn telos-delete-btn'
+  deleteBtn.title = 'Remove highlight'
+  deleteBtn.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.519.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clip-rule="evenodd" />
+    </svg>
+  `
+  deleteBtn.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    deleteHighlightWithConfirm(highlightId)
+  })
+
+  highlightTooltip.appendChild(deleteBtn)
+
+  // Keep tooltip visible when hovering over it
+  highlightTooltip.addEventListener('mouseleave', () => {
+    hideHighlightTooltip()
+  })
+
+  document.body.appendChild(highlightTooltip)
+
+  // Position tooltip above the highlight
+  const tooltipRect = highlightTooltip.getBoundingClientRect()
+  let top = rect.top - tooltipRect.height - 8
+  let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2)
+
+  // If not enough space above, position below
+  if (top < 10) {
+    top = rect.bottom + 8
+    highlightTooltip.classList.add('tooltip-below')
+  }
+
+  // Keep within viewport
+  left = Math.max(10, Math.min(left, window.innerWidth - tooltipRect.width - 10))
+
+  highlightTooltip.style.top = `${top}px`
+  highlightTooltip.style.left = `${left}px`
+}
+
+function hideHighlightTooltip() {
+  if (highlightTooltip) {
+    highlightTooltip.remove()
+    highlightTooltip = null
+  }
+}
+
+function deleteHighlightWithConfirm(highlightId) {
+  hideHighlightTooltip()
+
+  // Delete via background script
+  chrome.runtime.sendMessage({
+    action: 'deleteHighlight',
+    highlightId: highlightId
+  }, (response) => {
+    if (response?.success) {
+      removeHighlightFromPage(highlightId)
+      showNotification('Highlight removed', 'success')
+    } else {
+      showNotification('Failed to remove highlight', 'error')
+    }
+  })
+}
+
 function saveHighlightWithColor(color) {
   console.log('[Telos] saveHighlightWithColor:', color)
 
@@ -286,9 +400,14 @@ function applyHighlightToRange(range, color, highlightId) {
   }
 }
 
+let pendingHighlights = []
+let highlightRetryCount = 0
+const MAX_HIGHLIGHT_RETRIES = 5
+
 function loadExistingHighlights() {
   if (isApplyingHighlights) return
   isApplyingHighlights = true
+  highlightRetryCount = 0
 
   console.log('[Telos] Loading existing highlights for:', window.location.href)
 
@@ -299,23 +418,48 @@ function loadExistingHighlights() {
     isApplyingHighlights = false
 
     if (response?.highlights && response.highlights.length > 0) {
-      console.log('[Telos] Found', response.highlights.length, 'highlights')
-
-      // Remove existing Telos highlights first
-      document.querySelectorAll('.telos-highlight').forEach(el => {
-        const parent = el.parentNode
-        while (el.firstChild) {
-          parent.insertBefore(el.firstChild, el)
-        }
-        parent.removeChild(el)
-      })
-
-      // Apply each highlight
-      response.highlights.forEach(highlight => {
-        applyHighlightByText(highlight.text, highlight.color, highlight.id)
-      })
+      console.log('[Telos] Found', response.highlights.length, 'highlights to apply')
+      pendingHighlights = [...response.highlights]
+      applyPendingHighlights()
     }
   })
+}
+
+function applyPendingHighlights() {
+  if (pendingHighlights.length === 0) return
+
+  console.log('[Telos] Applying', pendingHighlights.length, 'pending highlights (attempt', highlightRetryCount + 1, ')')
+
+  // Remove existing Telos highlights first
+  document.querySelectorAll('.telos-highlight').forEach(el => {
+    const parent = el.parentNode
+    if (parent) {
+      while (el.firstChild) {
+        parent.insertBefore(el.firstChild, el)
+      }
+      parent.removeChild(el)
+    }
+  })
+
+  // Try to apply each highlight
+  const stillPending = []
+  pendingHighlights.forEach(highlight => {
+    const applied = applyHighlightByText(highlight.text, highlight.color, highlight.id)
+    if (!applied) {
+      stillPending.push(highlight)
+    }
+  })
+
+  pendingHighlights = stillPending
+
+  // Retry for dynamic sites if some highlights weren't applied
+  if (stillPending.length > 0 && highlightRetryCount < MAX_HIGHLIGHT_RETRIES) {
+    highlightRetryCount++
+    console.log('[Telos]', stillPending.length, 'highlights not found, retrying in 1s...')
+    setTimeout(applyPendingHighlights, 1000)
+  } else if (stillPending.length > 0) {
+    console.log('[Telos]', stillPending.length, 'highlights could not be applied (text not found on page)')
+  }
 }
 
 function applyHighlightByText(text, color, highlightId) {
