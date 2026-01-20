@@ -166,10 +166,17 @@ function hideToolbar() {
 }
 
 function saveHighlightWithColor(color) {
-  if (!currentSelection) return
+  console.log('[Telos] saveHighlightWithColor called with color:', color)
+
+  if (!currentSelection) {
+    console.log('[Telos] No currentSelection')
+    return
+  }
 
   const selectionText = currentSelection.text
   const selectionRange = currentSelection.range
+
+  console.log('[Telos] Selection text:', selectionText.substring(0, 50))
 
   hideToolbar()
 
@@ -181,12 +188,12 @@ function saveHighlightWithColor(color) {
   try {
     applied = applyHighlightToRange(selectionRange, color, tempId)
   } catch (e) {
-    console.log('Range highlight failed:', e)
+    console.log('[Telos] Range highlight failed:', e)
   }
 
   // If range-based highlight failed, use text matching
   if (!applied) {
-    console.log('Falling back to text matching for:', selectionText.substring(0, 50))
+    console.log('[Telos] Falling back to text matching')
     applyHighlightByText(selectionText, color, tempId)
   }
 
@@ -218,26 +225,30 @@ function saveHighlightWithColor(color) {
 function applyHighlightToRange(range, color, highlightId) {
   // Check if range is valid
   if (!range || range.collapsed) {
-    console.log('Range is invalid or collapsed')
+    console.log('[Telos] Range is invalid or collapsed')
     return false
   }
 
-  // Create wrapper span
-  const wrapper = document.createElement('span')
-  wrapper.className = `telos-highlight telos-highlight-${color}`
-  wrapper.setAttribute('data-telos-highlight-id', highlightId)
+  try {
+    // Create wrapper span
+    const wrapper = document.createElement('span')
+    wrapper.className = `telos-highlight telos-highlight-${color}`
+    wrapper.setAttribute('data-telos-highlight-id', highlightId)
 
-  // Try to wrap the selection
-  range.surroundContents(wrapper)
+    // Try to wrap the selection
+    range.surroundContents(wrapper)
 
-  // Verify it was applied
-  if (wrapper.parentNode) {
-    console.log('Highlight applied via range')
-    flashHighlight(wrapper)
-    return true
+    // Verify it was applied
+    if (wrapper.parentNode) {
+      console.log('[Telos] Highlight applied via range')
+      flashHighlight(wrapper)
+      return true
+    }
+    return false
+  } catch (e) {
+    console.log('[Telos] surroundContents failed:', e.message)
+    return false
   }
-
-  return false
 }
 
 function loadExistingHighlights() {
@@ -269,6 +280,8 @@ function loadExistingHighlights() {
 }
 
 function applyHighlightByText(text, color, highlightId) {
+  console.log('[Telos] applyHighlightByText called for:', text.substring(0, 50))
+
   // Use TreeWalker to find text nodes
   const walker = document.createTreeWalker(
     document.body,
@@ -313,11 +326,18 @@ function applyHighlightByText(text, color, highlightId) {
     }
   }
 
+  console.log('[Telos] Collected', textNodes.length, 'text nodes')
+
   // Find the text in accumulated content
   const matchIndex = accumulatedText.indexOf(normalizedSearchText)
-  if (matchIndex === -1) return
+  if (matchIndex === -1) {
+    console.log('[Telos] Text not found in page')
+    return false
+  }
 
+  console.log('[Telos] Found text at index:', matchIndex)
   const matchEnd = matchIndex + normalizedSearchText.length
+  let highlightApplied = false
 
   // Find which text nodes contain this match
   for (let i = 0; i < textNodes.length; i++) {
@@ -344,14 +364,25 @@ function applyHighlightByText(text, color, highlightId) {
         wrapper.setAttribute('data-telos-highlight-id', highlightId)
 
         range.surroundContents(wrapper)
+        highlightApplied = true
+        console.log('[Telos] Wrapped text node successfully')
       } catch (e) {
-        // Skip if we can't wrap this node
+        console.log('[Telos] Failed to wrap text node:', e.message)
       }
 
       // Only highlight the first occurrence
       if (tn.start + endInNode >= matchEnd) break
     }
   }
+
+  if (highlightApplied) {
+    console.log('[Telos] Highlight applied via text matching')
+    // Flash the highlight
+    const highlight = document.querySelector(`[data-telos-highlight-id="${highlightId}"]`)
+    if (highlight) flashHighlight(highlight)
+  }
+
+  return highlightApplied
 }
 
 function normalizeText(text) {
