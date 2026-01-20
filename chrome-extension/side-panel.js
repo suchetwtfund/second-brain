@@ -156,7 +156,12 @@ function updatePageInfo() {
 }
 
 function loadHighlights() {
+  console.log('[Telos Side Panel] loadHighlights called')
+  console.log('[Telos Side Panel] currentTab:', currentTab?.url)
+  console.log('[Telos Side Panel] currentUser:', currentUser?.email)
+
   if (!currentTab?.url || !currentUser) {
+    console.log('[Telos Side Panel] Missing tab or user, showing empty')
     renderHighlightsList([])
     return
   }
@@ -165,10 +170,13 @@ function loadHighlights() {
     action: 'getHighlightsForUrl',
     url: currentTab.url
   }, (response) => {
+    console.log('[Telos Side Panel] Got response:', response)
     if (response?.highlights) {
       highlights = response.highlights
+      console.log('[Telos Side Panel] Rendering', highlights.length, 'highlights')
       renderHighlightsList(highlights)
     } else {
+      console.log('[Telos Side Panel] No highlights in response')
       renderHighlightsList([])
     }
   })

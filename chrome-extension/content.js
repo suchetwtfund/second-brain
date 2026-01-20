@@ -6,7 +6,6 @@ const HIGHLIGHT_COLORS = ['yellow', 'green', 'blue', 'pink', 'orange']
 // Track current selection and toolbar state
 let currentSelection = null
 let toolbar = null
-let highlightTooltip = null
 let isApplyingHighlights = false
 let selectionTimeout = null
 
@@ -33,7 +32,6 @@ function initializeTelos() {
 
   // Hide toolbar on scroll or click outside
   document.addEventListener('scroll', hideToolbar, true)
-  document.addEventListener('scroll', hideHighlightTooltip, true)
   document.addEventListener('mousedown', handleMouseDown, true)
 
   // Also listen on window for edge cases
@@ -228,106 +226,165 @@ function hideToolbar() {
   }
 }
 
-// ==================== Highlight Hover Tooltip ====================
+// ==================== Highlight Hover Toolbar ====================
+
+let hoveredHighlightId = null
 
 function handleHighlightHover(e) {
   const highlight = e.target.closest('.telos-highlight')
   if (!highlight) return
 
-  // Don't show tooltip if toolbar is visible
-  if (toolbar) return
+  // Don't show if already showing toolbar for new selection
+  if (toolbar && !hoveredHighlightId) return
 
   const highlightId = highlight.getAttribute('data-telos-highlight-id')
   if (!highlightId || highlightId.startsWith('temp-')) return
 
-  showHighlightTooltip(highlight, highlightId)
+  // Get current color from the highlight
+  let currentColor = 'yellow'
+  HIGHLIGHT_COLORS.forEach(color => {
+    if (highlight.classList.contains(`telos-highlight-${color}`)) {
+      currentColor = color
+    }
+  })
+
+  showHighlightEditToolbar(highlight, highlightId, currentColor)
 }
 
 function handleHighlightMouseOut(e) {
-  const highlight = e.target.closest('.telos-highlight')
-  const tooltip = e.relatedTarget?.closest('#telos-highlight-tooltip')
+  // Don't hide if moving to toolbar
+  const relatedTarget = e.relatedTarget
+  if (relatedTarget?.closest('#telos-toolbar')) return
 
-  // Don't hide if moving to tooltip or within same highlight
-  if (tooltip) return
-
-  // Small delay to allow moving to tooltip
+  // Small delay to allow moving to toolbar
   setTimeout(() => {
-    if (highlightTooltip && !highlightTooltip.matches(':hover')) {
-      const highlightStillHovered = document.querySelector('.telos-highlight:hover')
-      if (!highlightStillHovered) {
-        hideHighlightTooltip()
+    if (toolbar && hoveredHighlightId) {
+      const toolbarHovered = toolbar.matches(':hover')
+      const highlightHovered = document.querySelector('.telos-highlight:hover')
+      if (!toolbarHovered && !highlightHovered) {
+        hideToolbar()
+        hoveredHighlightId = null
       }
     }
   }, 100)
 }
 
-function showHighlightTooltip(highlight, highlightId) {
-  hideHighlightTooltip()
+function showHighlightEditToolbar(highlight, highlightId, currentColor) {
+  hideToolbar()
+  hoveredHighlightId = highlightId
+
+  if (!isExtensionContextValid()) return
 
   const rect = highlight.getBoundingClientRect()
 
-  highlightTooltip = document.createElement('div')
-  highlightTooltip.id = 'telos-highlight-tooltip'
-  highlightTooltip.setAttribute('data-highlight-id', highlightId)
+  toolbar = document.createElement('div')
+  toolbar.id = 'telos-toolbar'
+  toolbar.setAttribute('data-telos-extension', 'true')
+  toolbar.setAttribute('data-editing-highlight', highlightId)
 
-  // Delete button
+  // Add color buttons
+  HIGHLIGHT_COLORS.forEach(color => {
+    const btn = document.createElement('button')
+    btn.className = `telos-toolbar-color telos-color-${color}`
+    if (color === currentColor) {
+      btn.style.border = '2px solid white'
+    }
+    btn.setAttribute('data-color', color)
+    btn.setAttribute('type', 'button')
+    btn.addEventListener('mousedown', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+    })
+    btn.addEventListener('click', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      changeHighlightColor(highlightId, color)
+    })
+    toolbar.appendChild(btn)
+  })
+
+  // Add divider
+  const divider = document.createElement('div')
+  divider.className = 'telos-toolbar-divider'
+  toolbar.appendChild(divider)
+
+  // Add delete button
   const deleteBtn = document.createElement('button')
-  deleteBtn.className = 'telos-tooltip-btn telos-delete-btn'
+  deleteBtn.className = 'telos-toolbar-delete'
   deleteBtn.title = 'Remove highlight'
   deleteBtn.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
       <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.519.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clip-rule="evenodd" />
     </svg>
   `
+  deleteBtn.addEventListener('mousedown', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+  })
   deleteBtn.addEventListener('click', (e) => {
     e.preventDefault()
     e.stopPropagation()
-    deleteHighlightWithConfirm(highlightId)
+    deleteHighlight(highlightId)
+  })
+  toolbar.appendChild(deleteBtn)
+
+  // Keep toolbar visible when hovering over it
+  toolbar.addEventListener('mouseleave', () => {
+    setTimeout(() => {
+      const highlightHovered = document.querySelector('.telos-highlight:hover')
+      if (!highlightHovered && toolbar && !toolbar.matches(':hover')) {
+        hideToolbar()
+        hoveredHighlightId = null
+      }
+    }, 100)
   })
 
-  highlightTooltip.appendChild(deleteBtn)
+  document.body.appendChild(toolbar)
 
-  // Keep tooltip visible when hovering over it
-  highlightTooltip.addEventListener('mouseleave', () => {
-    hideHighlightTooltip()
-  })
+  // Position toolbar above the highlight
+  const toolbarRect = toolbar.getBoundingClientRect()
+  let top = rect.top - toolbarRect.height - 8
+  let left = rect.left + (rect.width / 2) - (toolbarRect.width / 2)
 
-  document.body.appendChild(highlightTooltip)
-
-  // Position tooltip above the highlight
-  const tooltipRect = highlightTooltip.getBoundingClientRect()
-  let top = rect.top - tooltipRect.height - 8
-  let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2)
-
-  // If not enough space above, position below
   if (top < 10) {
     top = rect.bottom + 8
-    highlightTooltip.classList.add('tooltip-below')
+    toolbar.classList.add('telos-toolbar-below')
   }
 
-  // Keep within viewport
-  left = Math.max(10, Math.min(left, window.innerWidth - tooltipRect.width - 10))
+  left = Math.max(10, Math.min(left, window.innerWidth - toolbarRect.width - 10))
 
-  highlightTooltip.style.top = `${top}px`
-  highlightTooltip.style.left = `${left}px`
+  toolbar.style.top = `${top}px`
+  toolbar.style.left = `${left}px`
 }
 
-function hideHighlightTooltip() {
-  if (highlightTooltip) {
-    highlightTooltip.remove()
-    highlightTooltip = null
+function changeHighlightColor(highlightId, newColor) {
+  if (!isExtensionContextValid()) {
+    showNotification('Please refresh the page to use Telos', 'error')
+    return
   }
+
+  chrome.runtime.sendMessage({
+    action: 'updateHighlightColor',
+    highlightId: highlightId,
+    color: newColor
+  }, (response) => {
+    if (response?.success) {
+      updateHighlightColor(highlightId, newColor)
+      hideToolbar()
+      hoveredHighlightId = null
+    }
+  })
 }
 
-function deleteHighlightWithConfirm(highlightId) {
-  hideHighlightTooltip()
+function deleteHighlight(highlightId) {
+  hideToolbar()
+  hoveredHighlightId = null
 
   if (!isExtensionContextValid()) {
     showNotification('Please refresh the page to use Telos', 'error')
     return
   }
 
-  // Delete via background script
   chrome.runtime.sendMessage({
     action: 'deleteHighlight',
     highlightId: highlightId
