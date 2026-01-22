@@ -96,7 +96,7 @@ export async function syncPendingActions(): Promise<{ success: number; failed: n
 }
 
 // Extract content and cache item for offline reading
-export async function saveForOffline(itemId: string): Promise<Item | null> {
+export async function saveForOffline(itemId: string): Promise<{ item: Item | null; error?: string }> {
   try {
     // First, extract content if not already done
     const extractResponse = await fetch('/api/content/extract', {
@@ -106,7 +106,10 @@ export async function saveForOffline(itemId: string): Promise<Item | null> {
     })
 
     if (!extractResponse.ok) {
-      throw new Error('Failed to extract content')
+      const errorData = await extractResponse.json().catch(() => ({}))
+      const errorMessage = errorData.error || `HTTP ${extractResponse.status}`
+      console.error('Content extraction failed:', errorMessage)
+      return { item: null, error: errorMessage }
     }
 
     const { item } = await extractResponse.json()
@@ -115,7 +118,7 @@ export async function saveForOffline(itemId: string): Promise<Item | null> {
     await cacheItem(item)
 
     // Also cache any existing highlights for this item
-    const highlightsResponse = await fetch(`/api/highlights?itemId=${itemId}`)
+    const highlightsResponse = await fetch(`/api/highlights?item_id=${itemId}`)
     if (highlightsResponse.ok) {
       const { highlights } = await highlightsResponse.json()
       for (const highlight of highlights) {
@@ -123,10 +126,11 @@ export async function saveForOffline(itemId: string): Promise<Item | null> {
       }
     }
 
-    return item
+    return { item }
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     console.error('Failed to save for offline:', error)
-    return null
+    return { item: null, error: errorMessage }
   }
 }
 

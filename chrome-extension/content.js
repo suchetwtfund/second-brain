@@ -8,6 +8,8 @@ let currentSelection = null
 let toolbar = null
 let isApplyingHighlights = false
 let selectionTimeout = null
+let selectionPollInterval = null
+let lastSelectionText = ''
 
 // ==================== Initialization ====================
 
@@ -40,6 +42,38 @@ function initializeTelos() {
   // Listen for hover on highlights (using event delegation)
   document.addEventListener('mouseover', handleHighlightHover, true)
   document.addEventListener('mouseout', handleHighlightMouseOut, true)
+
+  // For complex sites like Twitter/Substack that intercept events,
+  // use polling as a fallback to detect selections
+  startSelectionPolling()
+}
+
+// Polling fallback for sites that block selection events
+function startSelectionPolling() {
+  // Poll every 250ms to check for selection changes
+  selectionPollInterval = setInterval(() => {
+    try {
+      const selection = window.getSelection()
+      if (!selection || selection.rangeCount === 0) return
+
+      const selectedText = selection.toString().trim()
+
+      // If we have a new non-empty selection that's different from last time
+      if (selectedText && selectedText.length > 0 && selectedText !== lastSelectionText) {
+        // Only show toolbar if we don't already have one
+        if (!toolbar) {
+          console.log('[Telos] Selection detected via polling:', selectedText.substring(0, 50))
+          lastSelectionText = selectedText
+          showToolbar(selection)
+        }
+      } else if (!selectedText && lastSelectionText) {
+        // Selection was cleared
+        lastSelectionText = ''
+      }
+    } catch (e) {
+      // Silently ignore errors in polling
+    }
+  }, 250)
 }
 
 // ==================== Message Handling ====================
@@ -111,6 +145,8 @@ function checkSelection() {
   const selectedText = selection.toString().trim()
 
   if (selectedText && selectedText.length > 0) {
+    // Update lastSelectionText so polling doesn't duplicate
+    lastSelectionText = selectedText
     console.log('[Telos] Selection detected:', selectedText.substring(0, 50))
     showToolbar(selection)
   }
@@ -126,8 +162,11 @@ function isExtensionContextValid() {
 }
 
 function showToolbar(selection) {
-  // Remove existing toolbar
-  hideToolbar()
+  // Remove existing toolbar (but don't reset lastSelectionText yet)
+  if (toolbar) {
+    toolbar.remove()
+    toolbar = null
+  }
 
   // Check if extension context is still valid
   if (!isExtensionContextValid()) {
@@ -138,6 +177,8 @@ function showToolbar(selection) {
   try {
     const range = selection.getRangeAt(0)
     const rect = range.getBoundingClientRect()
+
+    console.log('[Telos] Selection rect:', rect.width, rect.height, rect.top, rect.left)
 
     // Skip if rect is invalid (can happen on some sites)
     if (rect.width === 0 && rect.height === 0) {
@@ -156,12 +197,54 @@ function showToolbar(selection) {
     toolbar.id = 'telos-toolbar'
     toolbar.setAttribute('data-telos-extension', 'true')
 
+    // Apply critical inline styles as fallback (in case CSS doesn't load)
+    toolbar.style.cssText = `
+      position: fixed !important;
+      z-index: 2147483647 !important;
+      background: #1f2937 !important;
+      border-radius: 8px !important;
+      padding: 6px 8px !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 4px !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24) !important;
+      pointer-events: auto !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    `
+
+    // Color values for inline styles
+    const colorValues = {
+      yellow: '#facc15',
+      green: '#22c55e',
+      blue: '#3b82f6',
+      pink: '#ec4899',
+      orange: '#f97316'
+    }
+
     // Add color buttons
     HIGHLIGHT_COLORS.forEach(color => {
       const btn = document.createElement('button')
       btn.className = `telos-toolbar-color telos-color-${color}`
       btn.setAttribute('data-color', color)
       btn.setAttribute('type', 'button')
+      // Inline styles as fallback
+      btn.style.cssText = `
+        width: 24px !important;
+        height: 24px !important;
+        min-width: 24px !important;
+        min-height: 24px !important;
+        border-radius: 50% !important;
+        border: 2px solid transparent !important;
+        cursor: pointer !important;
+        background: ${colorValues[color]} !important;
+        pointer-events: auto !important;
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      `
       btn.addEventListener('mousedown', (e) => {
         e.preventDefault()
         e.stopPropagation()
@@ -177,6 +260,12 @@ function showToolbar(selection) {
     // Add divider and logo (skip logo if context invalid)
     const divider = document.createElement('div')
     divider.className = 'telos-toolbar-divider'
+    divider.style.cssText = `
+      width: 1px !important;
+      height: 20px !important;
+      background: rgba(255, 255, 255, 0.2) !important;
+      margin: 0 4px !important;
+    `
     toolbar.appendChild(divider)
 
     try {
@@ -184,6 +273,12 @@ function showToolbar(selection) {
       logo.className = 'telos-toolbar-logo'
       logo.src = chrome.runtime.getURL('icons/icon-32.png')
       logo.alt = 'Telos'
+      logo.style.cssText = `
+        width: 20px !important;
+        height: 20px !important;
+        margin-left: 2px !important;
+        opacity: 0.7 !important;
+      `
       toolbar.appendChild(logo)
     } catch {
       // Skip logo if extension context is invalid
@@ -213,7 +308,7 @@ function showToolbar(selection) {
     toolbar.style.top = `${top}px`
     toolbar.style.left = `${left}px`
 
-    console.log('[Telos] Toolbar shown at', top, left)
+    console.log('[Telos] Toolbar shown at', top, left, 'selection:', currentSelection.text.substring(0, 30))
   } catch (e) {
     console.log('[Telos] Error showing toolbar:', e.message)
   }
@@ -223,6 +318,13 @@ function hideToolbar() {
   if (toolbar) {
     toolbar.remove()
     toolbar = null
+    // Reset lastSelectionText when user intentionally hides toolbar
+    // (after a small delay to avoid immediate re-triggering from polling)
+    setTimeout(() => {
+      if (!toolbar) {
+        lastSelectionText = ''
+      }
+    }, 500)
   }
 }
 
@@ -556,7 +658,7 @@ function applyPendingHighlights() {
 }
 
 function applyHighlightByText(text, color, highlightId) {
-  console.log('[Telos] applyHighlightByText:', text.substring(0, 30))
+  console.log('[Telos] applyHighlightByText:', text.substring(0, 50))
 
   const walker = document.createTreeWalker(
     document.body,
@@ -575,83 +677,115 @@ function applyHighlightByText(text, color, highlightId) {
           return NodeFilter.FILTER_REJECT
         }
 
+        // Skip hidden elements
+        const style = window.getComputedStyle(parent)
+        if (style.display === 'none' || style.visibility === 'hidden') {
+          return NodeFilter.FILTER_REJECT
+        }
+
         return NodeFilter.FILTER_ACCEPT
       }
     }
   )
 
-  const normalizedSearchText = normalizeText(text)
-  let accumulatedText = ''
-  let textNodes = []
-
+  // Collect all text nodes with their positions
+  const textNodes = []
   let node
   while ((node = walker.nextNode())) {
     const nodeText = node.textContent
-    if (nodeText.trim()) {
+    if (nodeText && nodeText.trim()) {
       textNodes.push({
         node,
         text: nodeText,
-        normalizedText: normalizeText(nodeText),
-        start: accumulatedText.length
       })
-      // Add space between nodes to handle element boundaries
-      accumulatedText += normalizeText(nodeText) + ' '
-    }
-  }
-  accumulatedText = accumulatedText.trim()
-
-  console.log('[Telos] Searching for:', normalizedSearchText.substring(0, 50))
-  console.log('[Telos] In accumulated text length:', accumulatedText.length)
-
-  // Try exact match first
-  let matchIndex = accumulatedText.indexOf(normalizedSearchText)
-
-  // If not found, try with more flexible matching (ignore extra spaces)
-  if (matchIndex === -1) {
-    const flexibleSearch = normalizedSearchText.replace(/\s+/g, '\\s+')
-    const regex = new RegExp(flexibleSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\s\+/g, '\\s+'))
-    const match = accumulatedText.match(regex)
-    if (match) {
-      matchIndex = match.index
-      console.log('[Telos] Found with flexible match at:', matchIndex)
     }
   }
 
+  // Build accumulated text WITHOUT extra spaces - concatenate exactly as-is
+  let accumulatedText = ''
+  let nodePositions = [] // Track where each node's text starts/ends in accumulated string
+
+  for (const tn of textNodes) {
+    nodePositions.push({
+      node: tn.node,
+      text: tn.text,
+      start: accumulatedText.length,
+      end: accumulatedText.length + tn.text.length
+    })
+    accumulatedText += tn.text
+  }
+
+  // Normalize both the search text and accumulated text for matching
+  const normalizedSearchText = normalizeTextAggressive(text)
+  const normalizedAccumulated = normalizeTextAggressive(accumulatedText)
+
+  console.log('[Telos] Search text (normalized):', normalizedSearchText.substring(0, 80))
+  console.log('[Telos] Accumulated length:', normalizedAccumulated.length)
+
+  // Try to find the match in the normalized accumulated text
+  let matchIndex = normalizedAccumulated.indexOf(normalizedSearchText)
+
+  // If not found, try with flexible whitespace regex
   if (matchIndex === -1) {
-    console.log('[Telos] Text not found. First 200 chars of page:', accumulatedText.substring(0, 200))
+    // Escape regex special chars, then replace spaces with flexible whitespace pattern
+    const escaped = normalizedSearchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const flexPattern = escaped.replace(/ /g, '[\\s\\u00A0\\u200B]*')
+    try {
+      const regex = new RegExp(flexPattern, 'i')
+      const match = normalizedAccumulated.match(regex)
+      if (match) {
+        matchIndex = match.index
+        console.log('[Telos] Found with flexible regex at:', matchIndex)
+      }
+    } catch (e) {
+      console.log('[Telos] Regex error:', e.message)
+    }
+  }
+
+  if (matchIndex === -1) {
+    console.log('[Telos] Text not found in page')
+    console.log('[Telos] Search:', normalizedSearchText.substring(0, 100))
+    console.log('[Telos] Page sample:', normalizedAccumulated.substring(0, 300))
     return false
   }
 
-  console.log('[Telos] Found text at index:', matchIndex)
-  const matchEnd = matchIndex + normalizedSearchText.length
+  console.log('[Telos] Found match at normalized index:', matchIndex)
+
+  // Map normalized index back to original accumulated text position
+  const origMatchStart = mapNormalizedIndexToOriginal(accumulatedText, matchIndex)
+  const origMatchEnd = mapNormalizedIndexToOriginal(accumulatedText, matchIndex + normalizedSearchText.length)
+
+  console.log('[Telos] Original position:', origMatchStart, '-', origMatchEnd)
+
+  // Find which nodes contain the match and wrap them
   let highlightApplied = false
 
-  for (let i = 0; i < textNodes.length; i++) {
-    const tn = textNodes[i]
-    const nodeEnd = tn.start + tn.normalizedText.length
+  for (const np of nodePositions) {
+    // Check if this node overlaps with our match range
+    if (np.end <= origMatchStart || np.start >= origMatchEnd) {
+      continue // No overlap
+    }
 
-    if (nodeEnd > matchIndex && tn.start < matchEnd) {
-      const startInNode = Math.max(0, matchIndex - tn.start)
-      const endInNode = Math.min(tn.normalizedText.length, matchEnd - tn.start)
-      const origStart = mapNormalizedToOriginal(tn.text, startInNode)
-      const origEnd = mapNormalizedToOriginal(tn.text, endInNode)
+    // Calculate the portion of this node to highlight
+    const highlightStart = Math.max(0, origMatchStart - np.start)
+    const highlightEnd = Math.min(np.text.length, origMatchEnd - np.start)
 
-      try {
-        const range = document.createRange()
-        range.setStart(tn.node, origStart)
-        range.setEnd(tn.node, origEnd)
+    if (highlightStart >= highlightEnd) continue
 
-        const wrapper = document.createElement('span')
-        wrapper.className = `telos-highlight telos-highlight-${color}`
-        wrapper.setAttribute('data-telos-highlight-id', highlightId)
+    try {
+      const range = document.createRange()
+      range.setStart(np.node, highlightStart)
+      range.setEnd(np.node, highlightEnd)
 
-        range.surroundContents(wrapper)
-        highlightApplied = true
-      } catch (e) {
-        console.log('[Telos] Failed to wrap node:', e.message)
-      }
+      const wrapper = document.createElement('span')
+      wrapper.className = `telos-highlight telos-highlight-${color}`
+      wrapper.setAttribute('data-telos-highlight-id', highlightId)
 
-      if (tn.start + endInNode >= matchEnd) break
+      range.surroundContents(wrapper)
+      highlightApplied = true
+      console.log('[Telos] Wrapped text in node:', np.text.substring(highlightStart, highlightEnd).substring(0, 30))
+    } catch (e) {
+      console.log('[Telos] Failed to wrap node:', e.message)
     }
   }
 
@@ -664,33 +798,57 @@ function applyHighlightByText(text, color, highlightId) {
   return highlightApplied
 }
 
-function normalizeText(text) {
-  return text.replace(/\s+/g, ' ').trim()
+// Aggressive normalization - remove all weird whitespace and invisible chars
+function normalizeTextAggressive(text) {
+  return text
+    // Replace all types of whitespace with regular space
+    .replace(/[\s\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]/g, ' ')
+    // Remove zero-width characters
+    .replace(/[\u200B\u200C\u200D\uFEFF]/g, '')
+    // Collapse multiple spaces to single space
+    .replace(/ +/g, ' ')
+    .trim()
 }
 
-function mapNormalizedToOriginal(originalText, normalizedIndex) {
+// Map a position in normalized text back to original text
+function mapNormalizedIndexToOriginal(originalText, normalizedIndex) {
   let origIndex = 0
-  let normIndex = 0
+  let normCount = 0
   let inWhitespace = false
 
-  while (normIndex < normalizedIndex && origIndex < originalText.length) {
+  while (normCount < normalizedIndex && origIndex < originalText.length) {
     const char = originalText[origIndex]
-    const isSpace = /\s/.test(char)
+    const isWhitespace = /[\s\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]/.test(char)
+    const isZeroWidth = /[\u200B\u200C\u200D\uFEFF]/.test(char)
 
-    if (isSpace) {
+    if (isZeroWidth) {
+      // Skip zero-width chars entirely
+      origIndex++
+      continue
+    }
+
+    if (isWhitespace) {
       if (!inWhitespace) {
-        normIndex++
+        // First whitespace in a sequence counts as one space in normalized
+        normCount++
         inWhitespace = true
       }
+      // Additional whitespace chars don't increment normCount
     } else {
-      normIndex++
+      normCount++
       inWhitespace = false
     }
     origIndex++
   }
 
+  // Skip any trailing zero-width characters
+  while (origIndex < originalText.length && /[\u200B\u200C\u200D\uFEFF]/.test(originalText[origIndex])) {
+    origIndex++
+  }
+
   return origIndex
 }
+
 
 function scrollToHighlight(highlightId) {
   const highlight = document.querySelector(`[data-telos-highlight-id="${highlightId}"]`)

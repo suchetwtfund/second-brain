@@ -345,14 +345,8 @@ export function ItemCard({
 
         {/* Desktop: Hover overlay */}
         <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-background/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 md:flex">
-          {onOpenReader && item.type === 'link' && (
-            <Button size="sm" className="gap-1" onClick={(e) => { e.stopPropagation(); onOpenReader(item.id); }}>
-              <BookOpen className="h-4 w-4" />
-              Read
-            </Button>
-          )}
           {item.url && (
-            <Button size="sm" variant="secondary" className="gap-1" onClick={(e) => { e.stopPropagation(); handleOpen(); }}>
+            <Button size="sm" className="gap-1" onClick={(e) => { e.stopPropagation(); handleOpen(); }}>
               <ExternalLink className="h-4 w-4" />
               Open
             </Button>

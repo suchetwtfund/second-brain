@@ -114,14 +114,18 @@ export async function POST(request: NextRequest) {
     const { wordCount, readingTimeMinutes } = calculateReadingTime(article.textContent || '')
 
     // Update the item with extracted content
-    const { data: updatedItem, error: updateError } = await supabase
+    // Try with all fields first, fall back to just content if new columns don't exist
+    let updatedItem = null
+    let updateError = null
+
+    // First try with all fields
+    const fullUpdate = await supabase
       .from('items')
       .update({
         content: sanitizedContent,
         content_extracted_at: new Date().toISOString(),
         word_count: wordCount,
         reading_time_minutes: readingTimeMinutes,
-        // Update title if Readability found a better one
         title: article.title || item.title,
       })
       .eq('id', itemId)
@@ -129,10 +133,39 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
+    if (fullUpdate.error) {
+      console.error('Full update failed, trying minimal update:', fullUpdate.error.message)
+      // Fall back to just updating content (original column)
+      const minimalUpdate = await supabase
+        .from('items')
+        .update({
+          content: sanitizedContent,
+          title: article.title || item.title,
+        })
+        .eq('id', itemId)
+        .eq('user_id', user.id)
+        .select()
+        .single()
+
+      updatedItem = minimalUpdate.data
+      updateError = minimalUpdate.error
+
+      // Add the computed fields to the response even if not saved to DB
+      if (updatedItem) {
+        updatedItem = {
+          ...updatedItem,
+          word_count: wordCount,
+          reading_time_minutes: readingTimeMinutes,
+        }
+      }
+    } else {
+      updatedItem = fullUpdate.data
+    }
+
     if (updateError) {
       console.error('Update error:', updateError)
       return NextResponse.json(
-        { error: 'Failed to save extracted content' },
+        { error: `Failed to save extracted content: ${updateError.message}` },
         { status: 500 }
       )
     }

@@ -14,6 +14,7 @@ import {
   Loader2,
   WifiOff,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { ReaderView } from './reader-view'
 import { OfflineBadge } from '@/components/ui/offline-badge'
 import { saveForOffline, isOnline } from '@/lib/offline/sync'
@@ -77,11 +78,14 @@ export function ReaderDialog({ item, open, onOpenChange, onItemUpdate }: ReaderD
     if (!item?.id) return
 
     setExtracting(true)
-    const updatedItem = await saveForOffline(item.id)
+    const { item: updatedItem, error } = await saveForOffline(item.id)
     if (updatedItem) {
       setCurrentItem(updatedItem)
       setIsCached(true)
       onItemUpdate?.(updatedItem)
+      toast.success('Article saved for offline reading')
+    } else {
+      toast.error(error || 'Failed to extract article content')
     }
     setExtracting(false)
   }
