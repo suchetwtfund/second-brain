@@ -50,6 +50,9 @@ export type Database = {
           content_type: 'video' | 'article' | 'tweet' | 'link' | 'note' | 'pdf' | 'spotify'
           created_at: string
           updated_at: string
+          content_extracted_at: string | null
+          word_count: number | null
+          reading_time_minutes: number | null
         }
         Insert: {
           id?: string
@@ -65,6 +68,9 @@ export type Database = {
           content_type?: 'video' | 'article' | 'tweet' | 'link' | 'note' | 'pdf'
           created_at?: string
           updated_at?: string
+          content_extracted_at?: string | null
+          word_count?: number | null
+          reading_time_minutes?: number | null
         }
         Update: {
           id?: string
@@ -80,6 +86,9 @@ export type Database = {
           content_type?: 'video' | 'article' | 'tweet' | 'link' | 'note' | 'pdf'
           created_at?: string
           updated_at?: string
+          content_extracted_at?: string | null
+          word_count?: number | null
+          reading_time_minutes?: number | null
         }
       }
       tags: {

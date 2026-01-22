@@ -18,6 +18,9 @@ import { SettingsDialog } from '@/components/dialogs/settings-dialog'
 import { MoveToFolderDialog } from '@/components/dialogs/move-to-folder-dialog'
 import { AddTagsDialog } from '@/components/dialogs/add-tags-dialog'
 import { ItemDetailDialog } from '@/components/items/item-detail-dialog'
+import { ReaderDialog } from '@/components/reader/reader-dialog'
+import { isItemCached, getAllCachedItems } from '@/lib/offline'
+import { registerServiceWorker } from '@/lib/offline/service-worker'
 import type { Item, Folder, Tag } from '@/lib/supabase/types'
 
 interface DashboardProps {
@@ -50,9 +53,22 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
   const [itemTagsMap, setItemTagsMap] = useState<Record<string, string[]>>({})
   const [itemDetailOpen, setItemDetailOpen] = useState(false)
   const [viewingItemId, setViewingItemId] = useState<string | null>(null)
+  const [readerOpen, setReaderOpen] = useState(false)
+  const [readerItemId, setReaderItemId] = useState<string | null>(null)
+  const [offlineCachedIds, setOfflineCachedIds] = useState<Set<string>>(new Set())
 
   const router = useRouter()
   const supabase = createClient()
+
+  // Register service worker and load cached items
+  useEffect(() => {
+    registerServiceWorker()
+
+    // Load offline cached item IDs
+    getAllCachedItems().then((cachedItems) => {
+      setOfflineCachedIds(new Set(cachedItems.map((item) => item.id)))
+    })
+  }, [])
 
   // Keyboard shortcut for command palette
   useEffect(() => {
@@ -370,6 +386,20 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
     setItemDetailOpen(true)
   }
 
+  const handleOpenReader = (itemId: string) => {
+    setReaderItemId(itemId)
+    setReaderOpen(true)
+  }
+
+  const handleReaderItemUpdate = (updatedItem: Item) => {
+    // Update item in local state
+    setItems((prev) =>
+      prev.map((item) => (item.id === updatedItem.id ? updatedItem : item))
+    )
+    // Mark as cached
+    setOfflineCachedIds((prev) => new Set([...prev, updatedItem.id]))
+  }
+
   const filteredItems = items
     .filter((item) => {
       // Search filter
@@ -474,12 +504,14 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
                   key={item.id}
                   item={item}
                   viewMode="grid"
+                  isOfflineCached={offlineCachedIds.has(item.id)}
                   onMarkRead={handleMarkRead}
                   onArchive={handleArchive}
                   onDelete={handleDelete}
                   onMoveToFolder={handleMoveToFolder}
                   onAddTag={handleAddTag}
                   onViewDetails={handleViewDetails}
+                  onOpenReader={handleOpenReader}
                 />
               ))}
             </div>
@@ -490,12 +522,14 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
                   key={item.id}
                   item={item}
                   viewMode="list"
+                  isOfflineCached={offlineCachedIds.has(item.id)}
                   onMarkRead={handleMarkRead}
                   onArchive={handleArchive}
                   onDelete={handleDelete}
                   onMoveToFolder={handleMoveToFolder}
                   onAddTag={handleAddTag}
                   onViewDetails={handleViewDetails}
+                  onOpenReader={handleOpenReader}
                 />
               ))}
             </div>
@@ -564,7 +598,21 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
         item={viewingItemId ? items.find((i) => i.id === viewingItemId) || null : null}
         tags={viewingItemId ? tags.filter((t) => itemTagsMap[viewingItemId]?.includes(t.id)) : []}
         open={itemDetailOpen}
+        isOfflineCached={viewingItemId ? offlineCachedIds.has(viewingItemId) : false}
         onOpenChange={setItemDetailOpen}
+        onOpenReader={() => {
+          if (viewingItemId) {
+            setItemDetailOpen(false)
+            handleOpenReader(viewingItemId)
+          }
+        }}
+      />
+
+      <ReaderDialog
+        item={readerItemId ? items.find((i) => i.id === readerItemId) || null : null}
+        open={readerOpen}
+        onOpenChange={setReaderOpen}
+        onItemUpdate={handleReaderItemUpdate}
       />
     </div>
   )

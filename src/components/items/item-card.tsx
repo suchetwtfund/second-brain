@@ -28,19 +28,23 @@ import {
   FileIcon,
   Headphones,
   Eye,
+  BookOpen,
 } from 'lucide-react'
+import { OfflineBadge } from '@/components/ui/offline-badge'
 import type { Item, Tag as TagType } from '@/lib/supabase/types'
 
 interface ItemCardProps {
   item: Item
   tags?: TagType[]
   viewMode: 'grid' | 'list'
+  isOfflineCached?: boolean
   onMarkRead: (id: string) => void
   onArchive: (id: string) => void
   onDelete: (id: string) => void
   onMoveToFolder: (id: string) => void
   onAddTag: (id: string) => void
   onViewDetails?: (id: string) => void
+  onOpenReader?: (id: string) => void
 }
 
 const contentTypeIcons: Record<string, typeof Video> = {
@@ -69,12 +73,14 @@ export function ItemCard({
   item,
   tags = [],
   viewMode,
+  isOfflineCached,
   onMarkRead,
   onArchive,
   onDelete,
   onMoveToFolder,
   onAddTag,
   onViewDetails,
+  onOpenReader,
 }: ItemCardProps) {
   const [imageError, setImageError] = useState(false)
   const Icon = contentTypeIcons[item.content_type] || LinkIcon
@@ -124,6 +130,7 @@ export function ItemCard({
             <Badge variant="secondary" className={cn('text-[10px]', contentTypeColors[item.content_type])}>
               {item.content_type}
             </Badge>
+            {isOfflineCached && <OfflineBadge showText={false} />}
           </div>
           {(item.description || item.content) && (
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -183,6 +190,12 @@ export function ItemCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {onOpenReader && item.type === 'link' && (
+                <DropdownMenuItem onClick={() => onOpenReader(item.id)}>
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Read article
+                </DropdownMenuItem>
+              )}
               {onViewDetails && (
                 <DropdownMenuItem onClick={() => onViewDetails(item.id)}>
                   <Eye className="mr-2 h-4 w-4" />
@@ -247,14 +260,17 @@ export function ItemCard({
         )}
 
         {/* Type badge overlay */}
-        <Badge
-          className={cn(
-            'absolute left-2 top-2 text-[10px]',
-            contentTypeColors[item.content_type]
-          )}
-        >
-          {item.content_type}
-        </Badge>
+        <div className="absolute left-2 top-2 flex items-center gap-1">
+          <Badge
+            className={cn(
+              'text-[10px]',
+              contentTypeColors[item.content_type]
+            )}
+          >
+            {item.content_type}
+          </Badge>
+          {isOfflineCached && <OfflineBadge showText={false} />}
+        </div>
 
         {/* Mobile: Always visible action buttons */}
         <div className="absolute right-2 top-2 flex items-center gap-1 md:hidden">
@@ -281,6 +297,12 @@ export function ItemCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {onOpenReader && item.type === 'link' && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpenReader(item.id); }}>
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Read article
+                </DropdownMenuItem>
+              )}
               {item.url && (
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleOpen(); }}>
                   <ExternalLink className="mr-2 h-4 w-4" />
@@ -323,8 +345,14 @@ export function ItemCard({
 
         {/* Desktop: Hover overlay */}
         <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-background/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 md:flex">
+          {onOpenReader && item.type === 'link' && (
+            <Button size="sm" className="gap-1" onClick={(e) => { e.stopPropagation(); onOpenReader(item.id); }}>
+              <BookOpen className="h-4 w-4" />
+              Read
+            </Button>
+          )}
           {item.url && (
-            <Button size="sm" className="gap-1" onClick={(e) => { e.stopPropagation(); handleOpen(); }}>
+            <Button size="sm" variant="secondary" className="gap-1" onClick={(e) => { e.stopPropagation(); handleOpen(); }}>
               <ExternalLink className="h-4 w-4" />
               Open
             </Button>
@@ -344,7 +372,7 @@ export function ItemCard({
                   : 'text-muted-foreground'
               )}
             />
-            {item.status === 'read' ? 'Unread' : 'Read'}
+            {item.status === 'read' ? 'Unread' : 'Done'}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -353,6 +381,12 @@ export function ItemCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="center">
+              {onOpenReader && item.type === 'link' && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpenReader(item.id); }}>
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Read article
+                </DropdownMenuItem>
+              )}
               {onViewDetails && (
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onViewDetails(item.id); }}>
                   <Eye className="mr-2 h-4 w-4" />

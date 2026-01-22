@@ -22,7 +22,10 @@ import {
   Headphones,
   Info,
   Highlighter,
+  BookOpen,
+  Clock,
 } from 'lucide-react'
+import { OfflineBadge } from '@/components/ui/offline-badge'
 import { ItemHighlights } from './item-highlights'
 import type { Item, Tag as TagType } from '@/lib/supabase/types'
 
@@ -30,7 +33,9 @@ interface ItemDetailDialogProps {
   item: Item | null
   tags?: TagType[]
   open: boolean
+  isOfflineCached?: boolean
   onOpenChange: (open: boolean) => void
+  onOpenReader?: () => void
 }
 
 const contentTypeIcons: Record<string, typeof Video> = {
@@ -55,7 +60,7 @@ const contentTypeColors: Record<string, string> = {
   substack: 'bg-orange-600/20 text-orange-500',
 }
 
-export function ItemDetailDialog({ item, tags = [], open, onOpenChange }: ItemDetailDialogProps) {
+export function ItemDetailDialog({ item, tags = [], open, isOfflineCached, onOpenChange, onOpenReader }: ItemDetailDialogProps) {
   const [imageError, setImageError] = useState(false)
 
   if (!item) return null
@@ -108,15 +113,30 @@ export function ItemDetailDialog({ item, tags = [], open, onOpenChange }: ItemDe
                   <Badge variant="outline" className="text-xs">
                     {item.status}
                   </Badge>
+                  {isOfflineCached && <OfflineBadge />}
+                  {item.reading_time_minutes && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {item.reading_time_minutes} min
+                    </span>
+                  )}
                 </div>
                 <DialogTitle className="text-xl leading-tight">{item.title}</DialogTitle>
               </div>
-              {item.url && (
-                <Button onClick={handleOpenLink} className="gap-2">
-                  <ExternalLink className="h-4 w-4" />
-                  Open
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {onOpenReader && item.type === 'link' && (
+                  <Button onClick={onOpenReader} variant="secondary" className="gap-2">
+                    <BookOpen className="h-4 w-4" />
+                    Read
+                  </Button>
+                )}
+                {item.url && (
+                  <Button onClick={handleOpenLink} className="gap-2">
+                    <ExternalLink className="h-4 w-4" />
+                    Open
+                  </Button>
+                )}
+              </div>
             </div>
           </DialogHeader>
 
