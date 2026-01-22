@@ -4,6 +4,10 @@ import { Readability } from '@mozilla/readability'
 import { JSDOM } from 'jsdom'
 import DOMPurify from 'dompurify'
 
+// Force Node.js runtime (required for jsdom)
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 const WORDS_PER_MINUTE = 200
 
 function calculateReadingTime(text: string): { wordCount: number; readingTimeMinutes: number } {
