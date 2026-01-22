@@ -98,6 +98,8 @@ export async function syncPendingActions(): Promise<{ success: number; failed: n
 // Extract content and cache item for offline reading
 export async function saveForOffline(itemId: string): Promise<{ item: Item | null; error?: string }> {
   try {
+    console.log('[SaveOffline] Starting extraction for item:', itemId)
+
     // First, extract content if not already done
     const extractResponse = await fetch('/api/content/extract', {
       method: 'POST',
@@ -106,10 +108,18 @@ export async function saveForOffline(itemId: string): Promise<{ item: Item | nul
       body: JSON.stringify({ itemId }),
     })
 
+    console.log('[SaveOffline] Response status:', extractResponse.status, extractResponse.statusText)
+
     if (!extractResponse.ok) {
-      const errorData = await extractResponse.json().catch(() => ({}))
-      const errorMessage = errorData.error || `HTTP ${extractResponse.status}`
-      console.error('Content extraction failed:', errorMessage)
+      const errorText = await extractResponse.text()
+      console.error('[SaveOffline] Error response:', errorText)
+      let errorMessage = `HTTP ${extractResponse.status}`
+      try {
+        const errorData = JSON.parse(errorText)
+        errorMessage = errorData.error || errorMessage
+      } catch {
+        errorMessage = errorText || errorMessage
+      }
       return { item: null, error: errorMessage }
     }
 
