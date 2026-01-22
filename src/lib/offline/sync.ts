@@ -102,6 +102,7 @@ export async function saveForOffline(itemId: string): Promise<{ item: Item | nul
     const extractResponse = await fetch('/api/content/extract', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ itemId }),
     })
 
@@ -118,7 +119,9 @@ export async function saveForOffline(itemId: string): Promise<{ item: Item | nul
     await cacheItem(item)
 
     // Also cache any existing highlights for this item
-    const highlightsResponse = await fetch(`/api/highlights?item_id=${itemId}`)
+    const highlightsResponse = await fetch(`/api/highlights?item_id=${itemId}`, {
+      credentials: 'include',
+    })
     if (highlightsResponse.ok) {
       const { highlights } = await highlightsResponse.json()
       for (const highlight of highlights) {
