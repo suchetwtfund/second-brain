@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
 import {
   Home,
   FolderOpen,
@@ -15,16 +16,21 @@ import {
   ChevronRight,
   Settings,
   LogOut,
+  Users,
+  Mail,
 } from 'lucide-react'
-import type { Folder, Tag as TagType } from '@/lib/supabase/types'
+import type { Folder, Tag as TagType, Group } from '@/lib/supabase/types'
 
 interface SidebarProps {
   folders: Folder[]
   tags: TagType[]
+  groups?: (Group & { userRole: string })[]
+  pendingInvitationsCount?: number
   userEmail?: string
   onSignOut: () => void
   onCreateFolder: () => void
   onCreateTag: () => void
+  onCreateGroup?: () => void
   onAddItem: () => void
   onOpenSettings: () => void
 }
@@ -33,10 +39,11 @@ const navItems = [
   { href: '/', label: 'All Items', icon: Home },
 ]
 
-export function Sidebar({ folders, tags, userEmail, onSignOut, onCreateFolder, onCreateTag, onAddItem, onOpenSettings }: SidebarProps) {
+export function Sidebar({ folders, tags, groups = [], pendingInvitationsCount = 0, userEmail, onSignOut, onCreateFolder, onCreateTag, onCreateGroup, onAddItem, onOpenSettings }: SidebarProps) {
   const pathname = usePathname()
   const [foldersExpanded, setFoldersExpanded] = useState(true)
   const [tagsExpanded, setTagsExpanded] = useState(true)
+  const [socialExpanded, setSocialExpanded] = useState(true)
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar">
@@ -177,6 +184,76 @@ export function Sidebar({ folders, tags, userEmail, onSignOut, onCreateFolder, o
                 <Plus className="h-3.5 w-3.5" />
                 New tag
               </button>
+            </div>
+          )}
+        </div>
+
+        <Separator className="my-4 bg-sidebar-border" />
+
+        {/* Social / Groups */}
+        <div className="space-y-1">
+          <button
+            onClick={() => setSocialExpanded(!socialExpanded)}
+            className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
+          >
+            <span className="flex items-center gap-2">
+              <Users className="h-3.5 w-3.5" />
+              Social
+            </span>
+            <ChevronRight
+              className={cn('h-3.5 w-3.5 transition-transform', socialExpanded && 'rotate-90')}
+            />
+          </button>
+
+          {socialExpanded && (
+            <div className="ml-2 space-y-1">
+              {groups.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-muted-foreground">No groups yet</p>
+              ) : (
+                groups.map((group) => (
+                  <Link
+                    key={group.id}
+                    href={`/social/group/${group.id}`}
+                    className={cn(
+                      'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors',
+                      pathname === `/social/group/${group.id}`
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                    )}
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    {group.name}
+                  </Link>
+                ))
+              )}
+              {onCreateGroup && (
+                <button
+                  onClick={onCreateGroup}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Create group
+                </button>
+              )}
+              <Link
+                href="/social/invitations"
+                className={cn(
+                  'flex items-center justify-between rounded-lg px-3 py-1.5 text-sm transition-colors',
+                  pathname === '/social/invitations'
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <Mail className="h-3.5 w-3.5" />
+                  Invitations
+                </span>
+                {pendingInvitationsCount > 0 && (
+                  <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs">
+                    {pendingInvitationsCount}
+                  </Badge>
+                )}
+              </Link>
             </div>
           )}
         </div>

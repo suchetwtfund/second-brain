@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import type { Item, Folder, Tag } from '@/lib/supabase/types'
+import type { Item, Folder, Tag, Group } from '@/lib/supabase/types'
 
 const Dashboard = dynamic(
   () => import('@/components/dashboard').then((mod) => mod.Dashboard),
@@ -22,6 +22,8 @@ interface DashboardWrapperProps {
   initialItems: Item[]
   initialFolders: Folder[]
   initialTags: Tag[]
+  initialGroups?: (Group & { userRole: string })[]
+  initialPendingInvitationsCount?: number
   userId: string
   userEmail?: string
   currentFolder?: Folder

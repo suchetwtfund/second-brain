@@ -29,6 +29,7 @@ import {
   Headphones,
   Eye,
   BookOpen,
+  Share2,
 } from 'lucide-react'
 import { OfflineBadge } from '@/components/ui/offline-badge'
 import type { Item, Tag as TagType } from '@/lib/supabase/types'
@@ -45,6 +46,7 @@ interface ItemCardProps {
   onAddTag: (id: string) => void
   onViewDetails?: (id: string) => void
   onOpenReader?: (id: string) => void
+  onShareToGroup?: (id: string) => void
 }
 
 const contentTypeIcons: Record<string, typeof Video> = {
@@ -81,6 +83,7 @@ export function ItemCard({
   onAddTag,
   onViewDetails,
   onOpenReader,
+  onShareToGroup,
 }: ItemCardProps) {
   const [imageError, setImageError] = useState(false)
   const Icon = contentTypeIcons[item.content_type] || LinkIcon
@@ -113,6 +116,7 @@ export function ItemCard({
               src={item.thumbnail}
               alt=""
               fill
+              sizes="48px"
               className="object-cover"
               onError={() => setImageError(true)}
             />
@@ -214,6 +218,12 @@ export function ItemCard({
                 <Tag className="mr-2 h-4 w-4" />
                 Add tag
               </DropdownMenuItem>
+              {onShareToGroup && (
+                <DropdownMenuItem onClick={() => onShareToGroup(item.id)}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share to group
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => onArchive(item.id)}>
                 <Archive className="mr-2 h-4 w-4" />
@@ -250,6 +260,7 @@ export function ItemCard({
             src={item.thumbnail}
             alt=""
             fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             className="object-cover transition-transform group-hover:scale-105"
             onError={() => setImageError(true)}
           />
@@ -272,12 +283,12 @@ export function ItemCard({
           {isOfflineCached && <OfflineBadge showText={false} />}
         </div>
 
-        {/* Mobile: Always visible action buttons */}
+        {/* Mobile: Always visible action buttons - min 44x44px touch targets */}
         <div className="absolute right-2 top-2 flex items-center gap-1 md:hidden">
           <Button
             size="icon"
             variant="secondary"
-            className="h-8 w-8"
+            className="h-11 w-11"
             onClick={(e) => { e.stopPropagation(); onMarkRead(item.id); }}
             title={item.status === 'read' ? 'Mark as unread' : 'Mark as read'}
           >
@@ -292,8 +303,8 @@ export function ItemCard({
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="icon" variant="secondary" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
-                <MoreHorizontal className="h-4 w-4" />
+              <Button size="icon" variant="secondary" className="h-11 w-11" onClick={(e) => e.stopPropagation()}>
+                <MoreHorizontal className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -327,6 +338,12 @@ export function ItemCard({
                 <Tag className="mr-2 h-4 w-4" />
                 Add tag
               </DropdownMenuItem>
+              {onShareToGroup && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onShareToGroup(item.id); }}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share to group
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(item.id); }}>
                 <Archive className="mr-2 h-4 w-4" />
@@ -399,6 +416,12 @@ export function ItemCard({
                 <Tag className="mr-2 h-4 w-4" />
                 Add tag
               </DropdownMenuItem>
+              {onShareToGroup && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onShareToGroup(item.id); }}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share to group
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(item.id); }}>
                 <Archive className="mr-2 h-4 w-4" />

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -21,22 +22,28 @@ import { ItemDetailDialog } from '@/components/items/item-detail-dialog'
 import { ReaderDialog } from '@/components/reader/reader-dialog'
 import { isItemCached, getAllCachedItems } from '@/lib/offline'
 import { registerServiceWorker } from '@/lib/offline/service-worker'
-import type { Item, Folder, Tag } from '@/lib/supabase/types'
+import { CreateGroupDialog } from '@/components/social/create-group-dialog'
+import { ShareToGroupDialog } from '@/components/social/share-to-group-dialog'
+import type { Item, Folder, Tag, Group } from '@/lib/supabase/types'
 
 interface DashboardProps {
   initialItems: Item[]
   initialFolders: Folder[]
   initialTags: Tag[]
+  initialGroups?: (Group & { userRole: string })[]
+  initialPendingInvitationsCount?: number
   userId: string
   userEmail?: string
   currentFolder?: Folder
   currentTag?: Tag
 }
 
-export function Dashboard({ initialItems, initialFolders, initialTags, userId, userEmail, currentFolder, currentTag }: DashboardProps) {
+export function Dashboard({ initialItems, initialFolders, initialTags, initialGroups = [], initialPendingInvitationsCount = 0, userId, userEmail, currentFolder, currentTag }: DashboardProps) {
   const [items, setItems] = useState<Item[]>(initialItems)
   const [folders, setFolders] = useState<Folder[]>(initialFolders)
   const [tags, setTags] = useState<Tag[]>(initialTags)
+  const [groups, setGroups] = useState<(Group & { userRole: string })[]>(initialGroups)
+  const [pendingInvitationsCount, setPendingInvitationsCount] = useState(initialPendingInvitationsCount)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
@@ -56,6 +63,9 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
   const [readerOpen, setReaderOpen] = useState(false)
   const [readerItemId, setReaderItemId] = useState<string | null>(null)
   const [offlineCachedIds, setOfflineCachedIds] = useState<Set<string>>(new Set())
+  const [createGroupOpen, setCreateGroupOpen] = useState(false)
+  const [shareToGroupOpen, setShareToGroupOpen] = useState(false)
+  const [shareItemId, setShareItemId] = useState<string | null>(null)
 
   const router = useRouter()
   const supabase = createClient()
@@ -400,6 +410,71 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
     setOfflineCachedIds((prev) => new Set([...prev, updatedItem.id]))
   }
 
+  const handleCreateGroup = async (name: string, description: string) => {
+    try {
+      const res = await fetch('/api/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description })
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setGroups((prev) => [data.group, ...prev])
+        toast.success(`Group "${name}" created`)
+      } else {
+        const data = await res.json()
+        toast.error(data.error || 'Failed to create group')
+      }
+    } catch {
+      toast.error('Failed to create group')
+    }
+  }
+
+  const handleShareToGroup = (itemId: string) => {
+    setShareItemId(itemId)
+    setShareToGroupOpen(true)
+  }
+
+  const handleConfirmShareToGroups = async (itemId: string, groupIds: string[], note: string) => {
+    const results = await Promise.all(
+      groupIds.map(async (groupId) => {
+        try {
+          const res = await fetch(`/api/groups/${groupId}/shared`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemId, note })
+          })
+          return res.ok
+        } catch {
+          return false
+        }
+      })
+    )
+
+    const successCount = results.filter(Boolean).length
+    if (successCount > 0) {
+      toast.success(`Shared to ${successCount} group${successCount !== 1 ? 's' : ''}`)
+    } else {
+      toast.error('Failed to share item')
+    }
+  }
+
+  // Fetch groups on mount if not provided
+  useEffect(() => {
+    if (initialGroups.length === 0) {
+      fetch('/api/groups')
+        .then((res) => res.ok ? res.json() : { groups: [] })
+        .then((data) => setGroups(data.groups || []))
+        .catch(() => {})
+
+      fetch('/api/invitations')
+        .then((res) => res.ok ? res.json() : { invitations: [] })
+        .then((data) => setPendingInvitationsCount(data.invitations?.length || 0))
+        .catch(() => {})
+    }
+  }, [initialGroups.length])
+
   const filteredItems = items
     .filter((item) => {
       // Search filter
@@ -431,6 +506,53 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
       return 0 // Maintain relative order otherwise
     })
 
+  // Ref for virtualized scroll container
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  // Calculate columns based on viewport for grid virtualization
+  const getColumnCount = useCallback(() => {
+    if (typeof window === 'undefined') return 2
+    const width = window.innerWidth
+    if (width >= 1280) return 4 // xl
+    if (width >= 1024) return 3 // lg
+    if (width >= 640) return 2  // sm
+    return 1 // mobile
+  }, [])
+
+  const [columnCount, setColumnCount] = useState(2)
+
+  useEffect(() => {
+    const updateColumns = () => setColumnCount(getColumnCount())
+    updateColumns()
+    window.addEventListener('resize', updateColumns)
+    return () => window.removeEventListener('resize', updateColumns)
+  }, [getColumnCount])
+
+  // Grid virtualization - group items into rows
+  const gridRows = useMemo(() => {
+    const rows: Item[][] = []
+    for (let i = 0; i < filteredItems.length; i += columnCount) {
+      rows.push(filteredItems.slice(i, i + columnCount))
+    }
+    return rows
+  }, [filteredItems, columnCount])
+
+  // Grid virtualizer
+  const gridVirtualizer = useVirtualizer({
+    count: gridRows.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 280, // Estimated row height for grid cards
+    overscan: 3,
+  })
+
+  // List virtualizer
+  const listVirtualizer = useVirtualizer({
+    count: filteredItems.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 72, // Estimated height for list items
+    overscan: 5,
+  })
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Desktop Sidebar */}
@@ -438,10 +560,13 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
         <Sidebar
           folders={folders}
           tags={tags}
+          groups={groups}
+          pendingInvitationsCount={pendingInvitationsCount}
           userEmail={userEmail}
           onSignOut={handleSignOut}
           onCreateFolder={() => setCreateFolderOpen(true)}
           onCreateTag={() => setCreateTagOpen(true)}
+          onCreateGroup={() => setCreateGroupOpen(true)}
           onAddItem={() => setAddDialogOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
         />
@@ -453,10 +578,13 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
           <Sidebar
             folders={folders}
             tags={tags}
+            groups={groups}
+            pendingInvitationsCount={pendingInvitationsCount}
             userEmail={userEmail}
             onSignOut={handleSignOut}
             onCreateFolder={() => setCreateFolderOpen(true)}
             onCreateTag={() => setCreateTagOpen(true)}
+            onCreateGroup={() => setCreateGroupOpen(true)}
             onAddItem={() => setAddDialogOpen(true)}
             onOpenSettings={() => setSettingsOpen(true)}
           />
@@ -479,7 +607,7 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
           onFilterTypesChange={setFilterTypes}
         />
 
-        <main className="flex-1 overflow-auto p-4 md:p-6">
+        <main ref={scrollContainerRef} className="flex-1 overflow-auto p-4 md:p-6">
           {filteredItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary">
@@ -498,40 +626,88 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
               </Button>
             </div>
           ) : viewMode === 'grid' ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredItems.map((item) => (
-                <ItemCard
-                  key={item.id}
-                  item={item}
-                  viewMode="grid"
-                  isOfflineCached={offlineCachedIds.has(item.id)}
-                  onMarkRead={handleMarkRead}
-                  onArchive={handleArchive}
-                  onDelete={handleDelete}
-                  onMoveToFolder={handleMoveToFolder}
-                  onAddTag={handleAddTag}
-                  onViewDetails={handleViewDetails}
-                  onOpenReader={handleOpenReader}
-                />
-              ))}
+            <div
+              style={{
+                height: `${gridVirtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {gridVirtualizer.getVirtualItems().map((virtualRow) => {
+                const row = gridRows[virtualRow.index]
+                return (
+                  <div
+                    key={virtualRow.key}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: `${virtualRow.size}px`,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {row.map((item) => (
+                        <ItemCard
+                          key={item.id}
+                          item={item}
+                          viewMode="grid"
+                          isOfflineCached={offlineCachedIds.has(item.id)}
+                          onMarkRead={handleMarkRead}
+                          onArchive={handleArchive}
+                          onDelete={handleDelete}
+                          onMoveToFolder={handleMoveToFolder}
+                          onAddTag={handleAddTag}
+                          onViewDetails={handleViewDetails}
+                          onOpenReader={handleOpenReader}
+                          onShareToGroup={groups.length > 0 ? handleShareToGroup : undefined}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           ) : (
-            <div className="space-y-2">
-              {filteredItems.map((item) => (
-                <ItemCard
-                  key={item.id}
-                  item={item}
-                  viewMode="list"
-                  isOfflineCached={offlineCachedIds.has(item.id)}
-                  onMarkRead={handleMarkRead}
-                  onArchive={handleArchive}
-                  onDelete={handleDelete}
-                  onMoveToFolder={handleMoveToFolder}
-                  onAddTag={handleAddTag}
-                  onViewDetails={handleViewDetails}
-                  onOpenReader={handleOpenReader}
-                />
-              ))}
+            <div
+              style={{
+                height: `${listVirtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {listVirtualizer.getVirtualItems().map((virtualItem) => {
+                const item = filteredItems[virtualItem.index]
+                return (
+                  <div
+                    key={virtualItem.key}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
+                  >
+                    <div className="pb-2">
+                      <ItemCard
+                        item={item}
+                        viewMode="list"
+                        isOfflineCached={offlineCachedIds.has(item.id)}
+                        onMarkRead={handleMarkRead}
+                        onArchive={handleArchive}
+                        onDelete={handleDelete}
+                        onMoveToFolder={handleMoveToFolder}
+                        onAddTag={handleAddTag}
+                        onViewDetails={handleViewDetails}
+                        onOpenReader={handleOpenReader}
+                        onShareToGroup={groups.length > 0 ? handleShareToGroup : undefined}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </main>
@@ -613,6 +789,20 @@ export function Dashboard({ initialItems, initialFolders, initialTags, userId, u
         open={readerOpen}
         onOpenChange={setReaderOpen}
         onItemUpdate={handleReaderItemUpdate}
+      />
+
+      <CreateGroupDialog
+        open={createGroupOpen}
+        onOpenChange={setCreateGroupOpen}
+        onCreateGroup={handleCreateGroup}
+      />
+
+      <ShareToGroupDialog
+        open={shareToGroupOpen}
+        onOpenChange={setShareToGroupOpen}
+        item={shareItemId ? items.find((i) => i.id === shareItemId) || null : null}
+        groups={groups}
+        onShare={handleConfirmShareToGroups}
       />
     </div>
   )
