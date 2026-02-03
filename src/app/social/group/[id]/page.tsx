@@ -36,16 +36,70 @@ export default async function GroupPage({ params }: GroupPageProps) {
     .eq('id', id)
     .single()
 
+  console.log('Group fetch result:', { group, groupError, id })
+
   if (groupError || !group) {
+    console.log('Redirecting: groupError or no group', { groupError, group })
     redirect('/')
   }
 
   // Check if user is a member
-  const userMembership = group.group_members.find(
+  let userMembership = group.group_members.find(
     (m: { user_id: string }) => m.user_id === user.id
   )
 
+  console.log('User membership check:', {
+    userId: user.id,
+    groupOwnerId: group.owner_id,
+    groupMembers: group.group_members,
+    userMembership
+  })
+
+  // If user is the owner but not in members, auto-fix by creating membership
+  if (!userMembership && group.owner_id === user.id) {
+    console.log('Owner missing from members, auto-creating membership...')
+    const { error: fixError } = await supabase
+      .from('group_members')
+      .insert({
+        group_id: group.id,
+        user_id: user.id,
+        role: 'owner'
+      })
+
+    if (!fixError) {
+      // Refetch group with updated members
+      const { data: refreshedGroup } = await supabase
+        .from('groups')
+        .select(`
+          *,
+          group_members (
+            user_id,
+            role,
+            joined_at,
+            profiles:user_id (
+              id,
+              email,
+              display_name,
+              avatar_url
+            )
+          )
+        `)
+        .eq('id', id)
+        .single()
+
+      if (refreshedGroup) {
+        Object.assign(group, refreshedGroup)
+        userMembership = refreshedGroup.group_members.find(
+          (m: { user_id: string }) => m.user_id === user.id
+        )
+      }
+    } else {
+      console.log('Failed to auto-create membership:', fixError)
+    }
+  }
+
   if (!userMembership) {
+    console.log('Redirecting: no userMembership and not owner')
     redirect('/')
   }
 

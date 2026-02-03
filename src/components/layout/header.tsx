@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -45,6 +45,7 @@ export function Header({
   const [searchQuery, setSearchQuery] = useState('')
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const mobileSearchRef = useRef<HTMLInputElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (mobileSearchOpen && mobileSearchRef.current) {
@@ -52,10 +53,26 @@ export function Header({
     }
   }, [mobileSearchOpen])
 
-  const handleSearchChange = (value: string) => {
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+      }
+    }
+  }, [])
+
+  const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value)
-    onSearch(value)  // Dynamic search as you type
-  }
+
+    // Debounce search to avoid excessive filtering on mobile
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+    debounceRef.current = setTimeout(() => {
+      onSearch(value)
+    }, 200)
+  }, [onSearch])
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()

@@ -541,7 +541,7 @@ export function Dashboard({ initialItems, initialFolders, initialTags, initialGr
   const gridVirtualizer = useVirtualizer({
     count: gridRows.length,
     getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => 400, // Estimated row height for grid cards
+    estimateSize: () => 380, // Estimated row height for grid cards (includes card + gap)
     overscan: 3,
   })
 

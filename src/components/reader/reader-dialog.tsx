@@ -102,17 +102,17 @@ export function ReaderDialog({ item, open, onOpenChange, onItemUpdate }: ReaderD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-[100dvh] max-h-[100dvh] w-full max-w-4xl overflow-hidden p-0 md:h-[95vh] md:max-h-[95vh]">
+      <DialogContent className="h-[100vh] max-h-[100vh] w-full max-w-4xl overflow-hidden p-0 supports-[height:100dvh]:h-[100dvh] supports-[height:100dvh]:max-h-[100dvh] md:h-[95vh] md:max-h-[95vh]">
         {/* Header */}
         <div className="flex flex-col gap-2 border-b px-3 py-2 md:flex-row md:items-center md:justify-between md:px-4 md:py-3">
           <div className="flex items-center gap-2 overflow-hidden">
             <Button
               size="icon"
               variant="ghost"
-              className="h-8 w-8 shrink-0 md:hidden"
+              className="h-11 w-11 shrink-0 md:hidden"
               onClick={() => onOpenChange(false)}
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </Button>
             <h2 className="truncate text-base font-semibold md:text-lg">
               {currentItem.title}

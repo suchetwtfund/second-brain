@@ -83,21 +83,22 @@ export function ItemDetailDialog({ item, tags = [], open, isOfflineCached, onOpe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-hidden p-0">
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-2xl overflow-hidden p-0 sm:w-full">
         {/* Header with thumbnail */}
         {item.thumbnail && !imageError ? (
-          <div className="relative h-48 w-full overflow-hidden">
+          <div className="relative h-32 w-full overflow-hidden sm:h-48">
             <Image
               src={item.thumbnail}
               alt=""
               fill
+              sizes="(max-width: 640px) 100vw, 672px"
               className="object-cover"
               onError={() => setImageError(true)}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
           </div>
         ) : (
-          <div className="flex h-32 w-full items-center justify-center bg-secondary">
+          <div className="flex h-24 w-full items-center justify-center bg-secondary sm:h-32">
             <Icon className="h-12 w-12 text-muted-foreground/50" />
           </div>
         )}
@@ -152,7 +153,7 @@ export function ItemDetailDialog({ item, tags = [], open, isOfflineCached, onOpe
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="info" className="mt-4 max-h-[40vh] overflow-auto">
+            <TabsContent value="info" className="mt-4 max-h-[50vh] overflow-auto sm:max-h-[40vh]">
               <div className="space-y-4">
                 {item.description && (
                   <div>
@@ -205,7 +206,7 @@ export function ItemDetailDialog({ item, tags = [], open, isOfflineCached, onOpe
               </div>
             </TabsContent>
 
-            <TabsContent value="highlights" className="mt-4 max-h-[40vh] overflow-auto">
+            <TabsContent value="highlights" className="mt-4 max-h-[50vh] overflow-auto sm:max-h-[40vh]">
               <ItemHighlights itemId={item.id} />
             </TabsContent>
           </Tabs>
