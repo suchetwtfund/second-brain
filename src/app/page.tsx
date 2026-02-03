@@ -15,8 +15,7 @@ export default async function Home() {
     supabase
       .from('items')
       .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50),
+      .order('created_at', { ascending: false }),
     supabase
       .from('folders')
       .select('*')
