@@ -1,5 +1,5 @@
 // Telos Service Worker for offline reading support
-const CACHE_VERSION = 'v1'
+const CACHE_VERSION = 'v2'
 const STATIC_CACHE = `telos-static-${CACHE_VERSION}`
 const DYNAMIC_CACHE = `telos-dynamic-${CACHE_VERSION}`
 
