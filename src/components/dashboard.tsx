@@ -120,6 +120,23 @@ export function Dashboard({ initialItems, initialFolders, initialTags, initialGr
           })
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'items',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const updatedItem = payload.new as Item
+          setItems((prev) =>
+            prev.map((item) =>
+              item.id === updatedItem.id ? updatedItem : item
+            )
+          )
+        }
+      )
       .subscribe()
 
     return () => {
@@ -477,6 +494,11 @@ export function Dashboard({ initialItems, initialFolders, initialTags, initialGr
 
   const filteredItems = items
     .filter((item) => {
+      // Folder filter - when viewing a specific folder, only show items in that folder
+      if (currentFolder && item.folder_id !== currentFolder.id) {
+        return false
+      }
+
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
